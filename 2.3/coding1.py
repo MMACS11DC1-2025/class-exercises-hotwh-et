@@ -1,5 +1,5 @@
 """
-Write an Age in 2049 program that asks your age and outputs how old you'll be 31 years from now.
+Write an Age in 2056 program that asks your age and outputs how old you'll be 31 years from now.
 
 Examples:
 
@@ -14,5 +14,5 @@ In 2056, you will be 56 years old!
 from datetime import datetime
 
 currentAge = int(input("How old are you? "))
-futureAge = currentAge + (2049 - datetime.now().year)
-print(f"In 2049, you will be {futureAge}")
+futureAge = currentAge + (2056 - datetime.now().year)
+print(f"In 2056, you will be {futureAge}")
