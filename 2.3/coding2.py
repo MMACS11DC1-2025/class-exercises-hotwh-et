@@ -14,3 +14,14 @@ Judge 4: 8.5
 Judge 5: 9
 Your Olympic score is 8.0
 """
+scores = []
+for i in range(5):
+	score = float(input(f"Judge #{i+1} score: "))
+	scores.append(score)
+
+scoreSum = 0
+for score in scores:
+	scoreSum += score
+
+averageScore = scoreSum / len(scores)
+print(f"Your Olympic score is {averageScore}")
