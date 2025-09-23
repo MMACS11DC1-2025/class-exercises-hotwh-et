@@ -11,3 +11,8 @@ How old are you?
 > 25
 In 2056, you will be 56 years old!
 """
+from datetime import datetime
+
+currentAge = int(input("How old are you? "))
+futureAge = currentAge + (2049 - datetime.now().year)
+print(f"In 2049, you will be {futureAge}")
