@@ -1,5 +1,4 @@
 responsesDict = {}
-similarityScores = {}
 
 with open("./2.4/responses.csv", "r") as file:
 	headers = file.readline().strip()
@@ -8,4 +7,6 @@ with open("./2.4/responses.csv", "r") as file:
 	nameIndex = headersList.index("Name")
 	for response in responses:
 		responseList = response.strip().split(",")
-		responsesDict[responseList[nameIndex]] = dict(zip(headersList[nameIndex+1:], responseList[nameIndex+1:]))
+		if responseList[nameIndex] == "Ethan Wong":
+			print(response)
+			break
