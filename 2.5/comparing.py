@@ -6,6 +6,14 @@ You may use user input to add interactivity to the program.
 You must design your algorithm in English first, then translate it to Python code.
 Test as you go! Describe in your comments what steps you took to test your code.
 """
+'''
+Give the user a list of questions and let them choose one.
+For whichever they choose, give them a list of options and let them choose one.
+Using their answer, find people who answered the same question with the same answer.
+Give the user a list of questions and let them choose one.
+Using the obtained list of similar people, find their responses to this second question.
+Choose a random response out of these responses, and tell it to the user.
+'''
 import random
 
 # Variables that will be used throughout the program
@@ -15,6 +23,14 @@ questions = [] # [questions]
 
 # Function to ask questions from a list of options.
 # Handles invalid input by taking input again
+'''
+Tests
+When inputting "1", the function returns the first value from the array
+When inputting "2", the function returns the second value from the array
+When inputting "0", it prints "That is not a valid option!" and takes input again
+When inputting "lorem", it prints "That is not a valid option!" and takes input again
+When inputting "" (nothing), it prints "That is not a valid option!" and takes input again
+'''
 def askQuestion(question, questionOptions):
 	print(question)
 	# Print each option from the given list
@@ -35,7 +51,7 @@ def askQuestion(question, questionOptions):
 				break
 			else:
 				raise IndexError
-		except:
+		except (ValueError, IndexError):
 			# Catches input not being an integer or input being out of bounds
 			print("That is not a valid option!")
 	
@@ -44,28 +60,56 @@ def askQuestion(question, questionOptions):
 	return questionOptions[responseIndex]
 
 # Open the data file
-with open("./2.4/responses.csv", "r") as file:
-	# Get the headers as a list
-	headersList = file.readline().strip().split(",")
-	# Get the responses
-	responses = file.read().strip().split("\n")
-	# Get the index of the "Name" field to avoid getting and preceding field(s)
-	nameIndex = headersList.index("Name")
-	# Get the questions by getting every header after the "Name" field
-	questions = headersList[nameIndex+1:]
-	# Initialize the responseOptions variable with an empty array for each question
-	for question in questions:
-		responseOptions[question] = []
-	# For every response, add the relevant data to the lists and dicts
-	for response in responses:
-		# Split the response line into individual responses to each question
-		responseList = response.strip().split(",")
-		individualResponses = responseList[nameIndex+1:]
-		responsesDict[responseList[nameIndex]] = dict(zip(questions, individualResponses))
-		# For each individual response, add the response to the responseOptions list if not already present
-		for i in range(len(individualResponses)):
-			if responseList[nameIndex+1+i] not in responseOptions[questions[i]]:
-				responseOptions[questions[i]].append(responseList[nameIndex+1+i])
+'''
+Tests
+If the file exists and is in a valid format, the data is processed and the program continues
+If the file does not exist, it prints an error and an explanation message then exits
+If the file is not in CSV format, it prints an error and an explanation message then exits
+If the file has no questions, it prints an error and an explanation message then exits
+If the file has no data, it prints an error and an explanation message then exits
+'''
+try:
+	with open("./2.4/responses.csv", "r") as file:
+		# Get the headers as a list
+		headersList = file.readline().strip().split(",")
+		# Get the responses
+		responses = file.read().strip().split("\n")
+		# Get the index of the "Name" field to avoid getting and preceding field(s)
+		nameIndex = headersList.index("Name")
+		# Get the questions by getting every header after the "Name" field
+		questions = headersList[nameIndex+1:]
+		# Initialize the responseOptions variable with an empty array for each question
+		for question in questions:
+			responseOptions[question] = []
+		# For every response, add the relevant data to the lists and dicts
+		for response in responses:
+			# Split the response line into individual responses to each question
+			responseList = response.strip().split(",")
+			individualResponses = responseList[nameIndex+1:]
+			responsesDict[responseList[nameIndex]] = dict(zip(questions, individualResponses))
+			# For each individual response, add the response to the responseOptions list if not already present
+			for i in range(len(individualResponses)):
+				if responseList[nameIndex+1+i] not in responseOptions[questions[i]]:
+					responseOptions[questions[i]].append(responseList[nameIndex+1+i])
+except OSError:
+	print("There was an error opening the data file.")
+	print("Does the file exist at \"./2.4/responses.csv\"?")
+	exit()
+except (ValueError, IndexError):
+	print("There was an error processing the data file.")
+	print("Is the data in valid CSV format with headers, and contains a \"Name\" header?")
+	exit()
+
+# Data validation, explained in tests block above
+if (len(questions) <= 0):
+	print("There were no questions found in the file.")
+	print("Are the questions present in the CSV file?")
+	exit()
+respondentNames = list(responsesDict.keys())
+if (len(respondentNames) <= 0 or respondentNames[0] == ""):
+	print("There was no data found in the file.")
+	print("Is the data present in the CSV file?")
+	exit()
 
 # Sort the responseOptions
 for question, answers in responseOptions.items():
