@@ -99,6 +99,7 @@ for person in similarPeople:
 	answer = personData[requestedQuestion2]
 	similarPeopleAnswersCounter[answer] = similarPeopleAnswersCounter.get(answer, 0) + 1
 
+# Separate the responses and weight them according to how common they are
 predictionOptions = []
 predictionWeights = []
 for option, count in similarPeopleAnswersCounter.items():
