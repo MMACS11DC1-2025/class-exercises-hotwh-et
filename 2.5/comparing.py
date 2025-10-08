@@ -46,7 +46,7 @@ def askQuestion(question, questionOptions):
 		try:
 			responseInt = int(response)
 			responseIndex = responseInt-1
-			if responseInt <= len(questions) and responseIndex >= 0:
+			if responseInt <= len(questionOptions) and responseIndex >= 0:
 				valid = True
 				break
 			else:
