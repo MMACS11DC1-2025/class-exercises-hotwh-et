@@ -7,6 +7,10 @@ Your program should also include at least one function you’ve made yourself
 import random
 import threading
 import turtle
+import re
+
+global speed
+speed = 1
 
 t = turtle.Turtle()
 
@@ -14,6 +18,8 @@ t.speed(0)
 turtle.delay(0)
 t.hideturtle()
 turtle.tracer(0)
+
+turtle.Screen().bgcolor("red")
 
 class KeyboardThread(threading.Thread):
 
@@ -28,6 +34,7 @@ class KeyboardThread(threading.Thread):
 
 def random_colour():
 	return (random.random(), random.random(), random.random())
+	# return (1,1,1)
 
 class Ball:
 	def __init__(self, pos, radius, colour=None):
@@ -63,26 +70,31 @@ class Ball:
 balls = []
 
 def spawnBall(radius, pos=None, vector=None):
+	global speed
 	if not pos:
 		pos = [0, 0]
 	if not vector:
-		vector = [random.randrange(-50, 50)/5, random.randrange(-50, 50)/5]
+		vector = [random.randrange(-1000, 1000)/1e3 * speed, random.randrange(-1000, 1000)/1e3 * speed]
 	ball = Ball(pos, radius)
 	ball.setVector(vector)
 	balls.append(ball)
 
 def handleInput(input):
 	if input:
-		radius = 0
-		try:
-			radius = min(abs(int(input)), max(turtle.screensize()[0], turtle.screensize()[1]))
-		except ValueError:
-			return
-		spawnBall(radius)
+		if input.lower().startswith("speed "):
+			global speed
+			speed = int(re.sub("[^\\d]", "", input))
+		else:
+			radius = 0
+			try:
+				radius = min(abs(int(input)), max(turtle.screensize()[0], turtle.screensize()[1]))
+			except ValueError:
+				return
+			spawnBall(radius)
 
+keyboardThread = KeyboardThread(handleInput)
 while True:
 	# spawnBall(5, [random.randrange(round(turtle.window_width() / -2), round(turtle.window_width() / 2)), random.randrange(round(turtle.window_height() / -2), round(turtle.window_height() / 2))])
-	keyboardThread = KeyboardThread(handleInput)
 	t.clear()
 	for ball in balls:
 		ball.draw(t)
