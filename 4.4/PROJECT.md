@@ -23,25 +23,25 @@ You'll create a fractal generator that can draw at least one recursive pattern (
 ### **ESSENTIAL REQUIREMENTS** (2 points each)
 
 ### **Core Programming Concepts**
-- [ ] At least one recursive function defined with proper parameters (2 pts)
-- [ ] Proper base case implemented to stop recursion (2 pts)
-- [ ] Recursive calls reduce problem size toward base case (2 pts)
-- [ ] Function returns meaningful values (not just drawing) (2 pts)
-- [ ] At least one user input to dynamically generate graphics (2 pts)
-- [ ] Program prints the total count of recursive function calls executed (2 pts)
+- [X] At least one recursive function defined with proper parameters (2 pts)
+- [X] Proper base case implemented to stop recursion (2 pts)
+- [X] Recursive calls reduce problem size toward base case (2 pts)
+- [X] Function returns meaningful values (not just drawing) (2 pts)
+- [X] At least one user input to dynamically generate graphics (2 pts)
+- [X] Program prints the total count of recursive function calls executed (2 pts)
 
 ### **Data Structures & Organization**
-- [ ] Use a dictionary to store fractal settings (2 pts)
-- [ ] Dictionary keys clearly named and organized (2 pts)
-- [ ] Values include configuration, colors, or descriptions (2 pts)
+- [X] Use a dictionary to store fractal settings (2 pts)
+- [X] Dictionary keys clearly named and organized (2 pts)
+- [X] Values include configuration, colors, or descriptions (2 pts)
 
 ### **Turtle Graphics Integration**
-- [ ] Proper turtle setup and configuration (2 pts)
-- [ ] Function actually draws visual patterns using turtle commands (2 pts)
-- [ ] Visual output demonstrates recursive concepts effectively (2 pts)
+- [X] Proper turtle setup and configuration (2 pts)
+- [X] Function actually draws visual patterns using turtle commands (2 pts)
+- [X] Visual output demonstrates recursive concepts effectively (2 pts)
 
 ### **Code Quality**
-- [ ] Code is well-organized, readable, and follows Python naming conventions. (2 pts)
+- [X] Code is well-organized, readable, and follows Python naming conventions. (2 pts)
 - [ ] Includes meaningful comments that explain the logic and steps taken in the code. (2 pts)
 
 ### **Documentation & Process**
@@ -59,12 +59,12 @@ You'll create a fractal generator that can draw at least one recursive pattern (
 ## **ADVANCED CRITERIA** (1 point each)
 
 ### **Advanced Features**
-- [ ] More complex or creative use of recursion (this may include: multiple base cases, multiple recursive calls, or multiple recursive functions) (1 pt)
-- [ ] Advanced user inputs and error checking (1 pt)
-- [ ] Sophisticated return value usage beyond basic requirement (1 pt)
+- [X] More complex or creative use of recursion (this may include: multiple base cases, multiple recursive calls, or multiple recursive functions) (1 pt)
+- [X] Advanced user inputs and error checking (1 pt)
+- [X] Sophisticated return value usage beyond basic requirement (1 pt)
 
 ### **Creative & Process Elements**
-- [ ] Unique visual patterns or creative approaches (1 pt)
+- [X] Unique visual patterns or creative approaches (1 pt)
 - [ ] Comprehensive testing documentation (1 pt)
 - [ ] Documentation explains recursive approach (1 pt)
 - [ ] Documentation explains how different inputs affect output (1 pt)

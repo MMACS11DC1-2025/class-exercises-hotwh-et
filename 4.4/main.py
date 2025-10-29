@@ -6,10 +6,12 @@ Your program should also include at least one function you’ve made yourself
 """
 import random
 import threading
+import time
 import turtle
 import re
 
 SETTINGS = {
+	"max_fps": 60,
 	"speed": 1,
 	"width": 3,
 	"branch_angle_range": 90,
@@ -19,6 +21,8 @@ SETTINGS = {
 }
 
 totalCount = 0
+lastFrameTime = 0
+fps = 0
 
 t = turtle.Turtle()
 
@@ -28,7 +32,6 @@ t.hideturtle()
 turtle.tracer(0)
 
 class KeyboardThread(threading.Thread):
-
     def __init__(self, input_cbk = None, name='keyboard-input-thread'):
         self.input_cbk = input_cbk
         super(KeyboardThread, self).__init__(name=name, daemon=True)
@@ -77,7 +80,7 @@ class Ball:
 		for i in range(int(SETTINGS["branches"])):
 			value = self.drawBranch(direction - (SETTINGS["branch_angle_range"] / 2) + (i*angleDifference), length/SETTINGS["decline_rate"])
 			count += value[0]
-			totalLength += value[1]
+			totalLength = value[1]
 
 		t.penup()
 		t.setheading(direction)
@@ -124,14 +127,16 @@ def handleInput(input):
 			radius = 0
 			try:
 				radius = min(abs(int(input)), max(turtle.screensize()[0], turtle.screensize()[1]))
+				spawnBall(radius)
 			except ValueError:
-				return
-			spawnBall(radius)
-	print(f"Total Recursion Count: {totalCount}")
+				pass
+	print(f"Total Recursion Count: {totalCount:,}    | FPS: {fps:.3f}")
 
 keyboardThread = KeyboardThread(handleInput)
-
 while True:
+	frameInterval = 1 / SETTINGS["max_fps"]
+	if time.perf_counter() < lastFrameTime + frameInterval:
+		continue
 	t.clear()
 	t.width(SETTINGS["width"])
 	for ball in balls:
@@ -149,3 +154,5 @@ while True:
 		elif ballPos[1] - ballRadius <= turtle.window_height() / -2:
 			ball.setVector((ballVector[0], abs(ballVector[1]), ballVector[2]))
 	turtle.update()
+	fps = 1 / (time.perf_counter() - lastFrameTime)
+	lastFrameTime = time.perf_counter()
