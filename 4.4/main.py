@@ -120,7 +120,12 @@ def handleInput(input):
 		changedSetting = False
 		for setting in SETTINGS.keys():
 			if input.lower().startswith(setting.lower().replace("_", " ")):
-				SETTINGS[setting] = float(re.sub("[^\\d.]", "", input))
+				convertedInput = float(re.sub("[^\\d.]", "", input))
+				if setting == "branches":
+					if convertedInput < 2:
+						print("Branches must be at least 2!")
+						return
+				SETTINGS[setting] = convertedInput
 				changedSetting = True
 				break
 		if not changedSetting:
@@ -129,7 +134,7 @@ def handleInput(input):
 				radius = min(abs(int(input)), max(turtle.screensize()[0], turtle.screensize()[1]))
 				spawnBall(radius)
 			except ValueError:
-				pass
+				print("Invalid ball radius or setting name!")
 	print(f"Total Recursion Count: {totalCount:,}    | FPS: {fps:.3f}")
 
 keyboardThread = KeyboardThread(handleInput)
