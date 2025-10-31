@@ -26,30 +26,36 @@ fps = 0
 
 t = turtle.Turtle()
 
+# Change turtle settings to increase draw speed
+t.hideturtle()
 t.speed(0)
 turtle.delay(0)
-t.hideturtle()
 turtle.tracer(0)
 
+# Use a different thread for handling input
+# Extends class from threading module
 class KeyboardThread(threading.Thread):
-    def __init__(self, input_cbk = None, name='keyboard-input-thread'):
-        self.input_cbk = input_cbk
+    def __init__(self, inputCallback = None, name='keyboard-input-thread'):
+        self.inputCallback = inputCallback
         super(KeyboardThread, self).__init__(name=name, daemon=True)
         self.start()
 
     def run(self):
+		# Repeatedly accept input and pass it as an argument to the callback function
         while True:
-            self.input_cbk(input("Input: "))
+            self.inputCallback(input("Input: "))
 
+# Utility function to generate a random colour
 def random_colour():
 	return (random.random(), random.random(), random.random())
-	# return (1,1,1)
 
+# Ball class representing a fractal ball
+# Explained in more detail in README.md
 class Ball:
-	def __init__(self, pos, radius, colour=None):
+	def __init__(self, pos, radius, vector, colour=None):
 		self.pos = pos
 		self.radius = radius
-		self.vector = [0.0, 0.0, 0.0]
+		self.vector = vector
 		self.colour = colour if colour is not None else random_colour()
 		self.totalLength = radius
 
@@ -62,12 +68,12 @@ class Ball:
 		t.color(self.colour)
 		t.goto((self.pos[0], self.pos[1]))
 		for i in range(int(SETTINGS["branches"])):
-			value = self.drawBranch(i * (360 / SETTINGS["branches"]) + self.pos[2], self.radius)
+			value = self.drawBranch(t, i * (360 / SETTINGS["branches"]) + self.pos[2], self.radius)
 			count += value[0]
 			self.totalLength = value[1]
 		return count
 	
-	def drawBranch(self, direction, length):
+	def drawBranch(self, t, direction, length):
 		count = 0
 		totalLength = 0
 		if (length <= SETTINGS["min_branch_length"]):
@@ -76,9 +82,9 @@ class Ball:
 		t.pendown()
 		t.forward(length)
 		
-		angleDifference = SETTINGS["branch_angle_range"] / (SETTINGS["branches"] - 1)
+		angleDifference = SETTINGS["branch_angle_range"] / (int(SETTINGS["branches"]) - 1)
 		for i in range(int(SETTINGS["branches"])):
-			value = self.drawBranch(direction - (SETTINGS["branch_angle_range"] / 2) + (i*angleDifference), length/SETTINGS["decline_rate"])
+			value = self.drawBranch(t, direction - (SETTINGS["branch_angle_range"] / 2) + (i*angleDifference), length/SETTINGS["decline_rate"])
 			count += value[0]
 			totalLength = value[1]
 
@@ -88,7 +94,6 @@ class Ball:
 
 		return (count, totalLength + length)
 
-	
 	def setVector(self, vector):
 		self.vector = vector
 	
@@ -111,8 +116,7 @@ def spawnBall(radius, pos=None, vector=None):
 		pos = [0, 0, 0]
 	if not vector:
 		vector = [random.randrange(-1000, 1000)/1e2, random.randrange(-1000, 1000)/1e2, random.randrange(-10, 10)]
-	ball = Ball(pos, radius)
-	ball.setVector(vector)
+	ball = Ball(pos, radius, vector)
 	balls.append(ball)
 
 def handleInput(input):
@@ -120,7 +124,12 @@ def handleInput(input):
 		changedSetting = False
 		for setting in SETTINGS.keys():
 			if input.lower().startswith(setting.lower().replace("_", " ")):
-				convertedInput = float(re.sub("[^\\d.]", "", input))
+				convertedInput = 0
+				try:
+					convertedInput = float(re.sub("[^\\d.]", "", input))
+				except ValueError:
+					print("Invalid setting value!")
+					return
 				if setting == "branches":
 					if convertedInput < 2:
 						print("Branches must be at least 2!")
@@ -135,12 +144,14 @@ def handleInput(input):
 				spawnBall(radius)
 			except ValueError:
 				print("Invalid ball radius or setting name!")
+				return
 	print(f"Total Recursion Count: {totalCount:,}    | FPS: {fps:.3f}")
 
 keyboardThread = KeyboardThread(handleInput)
 while True:
 	frameInterval = 1 / SETTINGS["max_fps"]
-	if time.perf_counter() < lastFrameTime + frameInterval:
+	currentFrameTime = time.perf_counter()
+	if currentFrameTime < lastFrameTime + frameInterval:
 		continue
 	t.clear()
 	t.width(SETTINGS["width"])
@@ -159,5 +170,5 @@ while True:
 		elif ballPos[1] - ballRadius <= turtle.window_height() / -2:
 			ball.setVector((ballVector[0], abs(ballVector[1]), ballVector[2]))
 	turtle.update()
-	fps = 1 / (time.perf_counter() - lastFrameTime)
-	lastFrameTime = time.perf_counter()
+	fps = 1 / (currentFrameTime - lastFrameTime)
+	lastFrameTime = currentFrameTime
