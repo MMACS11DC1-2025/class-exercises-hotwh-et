@@ -111,7 +111,7 @@ The branches setting requires an extra check, as the program will crash if it tr
 If the input is valid, the value of the setting is changed to the inputted value, and the loop is stopped using `break`.
 
 ### Spawning balls
-If every setting is iterated through and none match, the intent of the user is assumed to be to spawn a ball. This is meant to happen when the user inputs only a number with no text. A ball is spawned with an initial branch radius of the inputted number, clipped to the screen size. The type conversion process is wrapped in a `try` block, which catches if the input is invalid.
+If every setting is iterated through and none match, the intent of the user is assumed to be to spawn a ball. This is meant to happen when the user inputs only a number with no text. A ball is spawned with an initial branch radius of the inputted number, clamped to the screen size. The type conversion process is wrapped in a `try` block, which catches if the input is invalid.
 
 ### Printing information
 Regardless of if the user inputted text of not, a message will be displayed containing the total recursion count and current FPS. This will not be displayed if the user inputted text, but it was invalid for changing a setting or spawning a ball.
