@@ -154,6 +154,15 @@ def handleInput(input):
 					if convertedInput < 2:
 						print("Branches must be at least 2!")
 						return
+				elif setting == "max_fps":
+					if convertedInput < 1:
+						print("Max FPS must be at least 1!")
+						return
+				elif setting == "decline_rate":
+					if convertedInput <= 0:
+						print("Decline rate must be greater than 0!")
+						return
+
 				SETTINGS[setting] = convertedInput
 				changedSetting = True
 				break
@@ -197,6 +206,9 @@ while True:
 			ball.setVector((ballVector[0], -abs(ballVector[1]), ballVector[2]))
 		elif ballPos[1] - ballRadius <= turtle.window_height() / -2:
 			ball.setVector((ballVector[0], abs(ballVector[1]), ballVector[2]))
+	
+	# Automatic updating is turned off by setting tracer to 0
+	# Must update the drawing after each frame
 	turtle.update()
 	fps = 1 / (currentFrameTime - lastFrameTime)
 	lastFrameTime = currentFrameTime

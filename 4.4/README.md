@@ -134,4 +134,56 @@ The recursion stops when the length becomes less than or equal to the `min_branc
 The return value is a tuple containing the recursion count and total length. The count is added to the `totalCount` variable. The total length is stored and used in collision calculations.
 
 # Testing
-WIP
+## Input Validation and Handling
+### Valid ball radius
+__Input:__ `50`\
+__Output:__ ![Valid ball radius](./docs/valid_ball_radius.png)
+
+### Valid ball radius 2
+__Input:__ `100`\
+__Output:__ ![Valid ball radius 2](./docs/valid_ball_radius_2.png)
+
+### Invalid ball radius
+__Input:__ `0.5`\
+__Output:__ `Invalid ball radius or setting name!` ![Invalid ball radius](./docs/invalid_ball_radius.png)
+
+### Valid setting change
+__Input:__ `speed 2`\
+__Output:__ (No visible change in a screenshot, but the setting is changed) ![Valid setting change](./docs/valid_setting_change.png)
+
+### Valid setting change (unknown characters)
+__Input:__ `speed -2`\
+__Output:__ (The minus character is ignored. No visible change in a screenshot, but the setting is changed) ![Valid setting change (unknown characters)](./docs/valid_setting_change_chars.png)
+
+### Invalid setting change (invalid setting name)
+__Input:__ `min fps 2`\
+__Output:__ `Invalid ball radius or setting name!` ![Invalid setting change (invalid setting name)](./docs/invalid_setting_change_invalid_name.png)
+
+### Invalid setting change (no value)
+__Input:__ `speed `\
+__Output:__ `Invalid setting value!` ![Invalid setting change (no value)](./docs/invalid_setting_change_none.png)
+
+### Invalid setting change (invalid value)
+__Input:__ `speed lorem`\
+__Output:__ `Invalid setting value` ![Invalid setting change (invalid value)](./docs/invalid_setting_change_invalid.png)
+
+### Invalid branch amount
+__Input:__ `branches 1`\
+__Output:__ `Branches must be at least 2!` ![Invalid branch amount](./docs/invalid_setting_change_branches.png)
+
+### Invalid max FPS
+__Input:__ `max fps 0`\
+__Output:__ `Max FPS must be at least 1!` ![Invalid max FPS](./docs/invalid_setting_change_fps.png)
+
+### Invalid decline rate
+__Input:__ `decline rate 0`\
+__Output:__ `Decline rate must be greater than 0!` ![Invalid decline rate](./docs/invalid_setting_change_decline.png)
+
+### Ball radius too large
+__Input:__ `9999999999`\
+__Output:__ (A ball spawns, but its size is reduced to the screen size) ![Ball radius too large](./docs/invalid_setting_change_ball_large.png)
+
+# Problems encountered
+The combination of iterating recursive functions caused many problems during development. Specifically, it was hard to make each iteration draw in a different direction for each loop. Part of this struggle was to figure out where the first branch should draw. This was made especially hard with the rapid movement and spinning, making it hard to locate the issue.
+
+To solve this problem, it simply took a lot of refinement. The problem was isolated by temporarily disabling all movement, and slowing down the turtle. I then experimented with how different values behave to figure out what was the correct solution.
