@@ -178,6 +178,11 @@ def handleInput(input):
 	# Print useful information
 	print(f"Total Recursion Count: {totalCount:,}    | FPS: {fps:.3f}")
 
+print("#"*50)
+print("#" + " "*48 + "#")
+print("#" + "Please read the README file for instructions".center(48) + "#")
+print("#" + " "*48 + "#")
+print("#"*50)
 keyboardThread = KeyboardThread(handleInput)
 
 # Main loop

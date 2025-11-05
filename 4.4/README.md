@@ -9,7 +9,7 @@ The program should still run no matter the state, but making them too high may c
 # Usage
 ## Inputs
 ### Spawning a fractal ball
-Spawn a fractal ball by simply putting a number in the input. This number will be the length of the first branch.\
+Spawn a fractal ball by simply putting a number in the input. This number will be the length of the first branch.
 ```
 Input: 50
 ```

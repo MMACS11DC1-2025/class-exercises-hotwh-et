@@ -54,7 +54,7 @@ You'll create a fractal generator that can draw at least one recursive pattern (
 - [X] Source code is committed to repository on Github with **at least 3 meaningful commits on different days** (2 pts)
 
 ### **Peer Review**
-- [ ] Peer review completed with classmate. Feedback on code quality, approach, and any debugging techniques used are documented in README (2 pts)
+- [X] Peer review completed with classmate. Feedback on code quality, approach, and any debugging techniques used are documented in README (2 pts)
 
 ## **ADVANCED CRITERIA** (1 point each)
 
