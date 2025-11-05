@@ -35,15 +35,15 @@ turtle.tracer(0)
 # Use a different thread for handling input
 # Extends class from threading module
 class KeyboardThread(threading.Thread):
-    def __init__(self, inputCallback = None, name='keyboard-input-thread'):
-        self.inputCallback = inputCallback
-        super(KeyboardThread, self).__init__(name=name, daemon=True)
-        self.start()
+	def __init__(self, inputCallback = None, name='keyboard-input-thread'):
+		self.inputCallback = inputCallback
+		super(KeyboardThread, self).__init__(name=name, daemon=True)
+		self.start()
 
-    def run(self):
+	def run(self):
 		# Repeatedly accept input and pass it as an argument to the callback function
-        while True:
-            self.inputCallback(input("Input: "))
+		while True:
+			self.inputCallback(input("Input: "))
 
 # Utility function to generate a random colour
 def random_colour():
