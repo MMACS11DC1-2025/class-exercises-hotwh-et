@@ -187,3 +187,6 @@ __Output:__ (A ball spawns, but its size is reduced to the screen size) ![Ball r
 The combination of iterating recursive functions caused many problems during development. Specifically, it was hard to make each iteration draw in a different direction for each loop. Part of this struggle was to figure out where the first branch should draw. This was made especially hard with the rapid movement and spinning, making it hard to locate the issue.
 
 To solve this problem, it simply took a lot of refinement. The problem was isolated by temporarily disabling all movement, and slowing down the turtle. I then experimented with how different values behave to figure out what was the correct solution.
+
+# Peer Feedback
+This project was reviewed by Steven Zhang. There were no notable changes made due to this, as it was mostly positive feedback.
