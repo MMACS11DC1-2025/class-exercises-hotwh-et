@@ -138,6 +138,12 @@ def spawnBall(radius, pos=None, vector=None):
 
 def handleInput(input):
 	if input:
+		if input.strip().lower() == "help":
+			print("Spawn a ball by entering a number and pressing enter.")
+			print("There are many settings you can change.")
+			print("Check the README file for instructions on how to do this.")
+			return
+
 		changedSetting = False
 		for setting in SETTINGS.keys():
 			# For each key, replace the underscore with a space, then check if the input is prefixed by it
@@ -178,11 +184,12 @@ def handleInput(input):
 	# Print useful information
 	print(f"Total Recursion Count: {totalCount:,}    | FPS: {fps:.3f}")
 
-print("#"*50)
-print("#" + " "*48 + "#")
-print("#" + "Please read the README file for instructions".center(48) + "#")
-print("#" + " "*48 + "#")
-print("#"*50)
+print("#"*55)
+print("#" + " "*53 + "#")
+print("#" + "Type \"help\" for basic instructions".center(53) + "#")
+print("#" + "Please read the README file for full instructions".center(53) + "#")
+print("#" + " "*53 + "#")
+print("#"*55)
 keyboardThread = KeyboardThread(handleInput)
 
 # Main loop

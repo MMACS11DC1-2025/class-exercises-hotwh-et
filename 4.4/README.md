@@ -21,6 +21,10 @@ For example, the following input will set the speed to 2:
 ```
 Input: speed 2
 ```
+For settings with multiple words, simply type their name with spaces
+```
+Input: branch angle range 90
+```
 
 All of the following settings are available to be changed:
 - Max FPS
@@ -32,25 +36,32 @@ All of the following settings are available to be changed:
 - Decline rate
 
 __Max FPS__\
-This is simply a cap on FPS, and does not actually change the performance. This is meant to prevent fluctuations in FPS when changing settings
+This is simply a cap on FPS, and does not actually change the performance. This is meant to prevent fluctuations in FPS when changing settings\
+Default value: 60
 
 __Speed__\
-This a multiplier to the vector, and does not impact the performance
+This a multiplier to the vector, and does not impact the performance\
+Default value: 1
 
 __Width__\
-This defines the width of the stroke, and makes no impact to the radius of the balls. It should not make a noticeable impact to performance
+This defines the width of the stroke, and makes no impact to the radius of the balls. It should not make a noticeable impact to performance\
+Default value: 3
 
 __Branch angle range__\
-This is the total angle that the child branches will span. It should not make a noticeable impact to performance
+This is the total angle that the child branches will span. It should not make a noticeable impact to performance\
+Default value: 90
 
 __Branches__\
-This defines how many branches will grow at each layer. This makes a big impact on performance. It is recommended to keep this value from 2-5.
+This defines how many branches will grow at each layer. This makes a big impact on performance. It is recommended to keep this value from 2-5.\
+Default value: 5
 
 __Min branch length__\
-This is the minimum branch length before it stops branching out. It is recommended to keep this value from 20-50
+This is the minimum branch length before it stops branching out. It is recommended to keep this value from 20-50\
+Default value: 20
 
 __Decline rate__\
-This is the rate at which the branch length will decline by. For example if the rate is 2, the length of the child branches will be 1/2 of their parent branch. It is recommended to keep this value from 1.7-3
+This is the rate at which the branch length will decline by. For example if the rate is 2, the length of the child branches will be 1/2 of their parent branch. It is recommended to keep this value from 1.7-3\
+Default value: 1.9
 
 ## Outputs
 When pressing enter, either with an input or without, the program will display 2 pieces of information.
