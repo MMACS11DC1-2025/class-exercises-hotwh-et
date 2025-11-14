@@ -103,7 +103,7 @@ class Ball:
 		t.setheading(direction)
 		t.backward(length)
 
-		return (count, totalLength + length)
+		return (count + 1, totalLength + length)
 
 	# Various getter and setter methods
 	def setVector(self, vector):
@@ -159,8 +159,8 @@ def handleInput(input):
 						print("Max FPS must be at least 1!")
 						return
 				elif setting == "decline_rate":
-					if convertedInput <= 0:
-						print("Decline rate must be greater than 0!")
+					if convertedInput <= 1:
+						print("Decline rate must be greater than 1!")
 						return
 
 				SETTINGS[setting] = convertedInput
