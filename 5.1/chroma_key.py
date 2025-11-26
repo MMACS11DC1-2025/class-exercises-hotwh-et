@@ -18,9 +18,7 @@ def chroma_key(originalImage, targetColour):
 	for x in range(newImage.width):
 		for y in range(newImage.height):
 			pixel = newImage.getpixel((x, y))
-			r = pixel[0]
-			g = pixel[1]
-			b = pixel[2]
+			r, g, b, _ = pixel
 			if (colours[targetColour][0] - tolerance <= r <= colours[targetColour][0] + tolerance
 					and colours[targetColour][1] - tolerance <= g <= colours[targetColour][1] + tolerance
 					and colours[targetColour][2] - tolerance <= b <= colours[targetColour][2] + tolerance):
