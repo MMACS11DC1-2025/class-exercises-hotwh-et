@@ -24,6 +24,7 @@ component_colours = [
 class ImageLabelMatrix:
 	def __init__(self, image: Image.Image):
 		self.matrix = []
+		self.group_pixels = {}
 		for x in range(image.width):
 			self.matrix.append([])
 			for y in range(image.height):
@@ -35,15 +36,23 @@ class ImageLabelMatrix:
 
 	def setPixel(self, x, y, value):
 		self.matrix[x][y] = value
+		self.group_pixels[value] = self.group_pixels.get(value, [])
+		self.group_pixels[value].append((x, y))
+
 
 def is_foreground(colour, background=0, threshold=25):
 	return abs(colour - background) >= threshold
 
+total_time = 0
+total_pixels = 0
 for file in files:
 	start_time = time.perf_counter()
 	print(f"Started analyzing {file}")
 
 	original_image = Image.open(f"./6.7/images/{file}")
+	pixels = original_image.width * original_image.height
+	print(f"Contains {pixels:,} pixels")
+	total_pixels += pixels
 
 	greyscale_image = img_functions.greyscale(original_image)
 	ccl_input_image = greyscale_image.copy()
@@ -54,8 +63,6 @@ for file in files:
 	pixelQueue = []
 	currentLabel = 0
 
-	# greyscale_image.save("output.png")
-	
 	average_colour_sum = 0
 	min_colour = float("inf")
 	max_colour = float("-inf")
@@ -72,8 +79,8 @@ for file in files:
 	foreground_threshold = colour_range * 0.2
 
 	label_counts = {}
+	labeled_image = Image.new("RGB", (ccl_input_image.width, ccl_input_image.height))
 
-	# labelMatrix.setPixel(0, 0, currentLabel)
 	for x in range(ccl_input_image.width):
 		for y in range(ccl_input_image.height):
 			if (is_foreground(ccl_input_image.getpixel((x, y)), average_colour, foreground_threshold)
@@ -83,8 +90,9 @@ for file in files:
 				label_counts[currentLabel] = label_counts.get(currentLabel, 0) + 1
 				pixelQueue.append((x, y))
 
+				labeled_image.putpixel((x, y), component_colours[currentLabel % len(component_colours)])
+
 				while len(pixelQueue) > 0:
-					# print(pixelQueue)
 					targetPixel = pixelQueue.pop(0)
 					
 					neighbourPixels = []
@@ -92,30 +100,32 @@ for file in files:
 						for j in range(-1, 2):
 							currentX = targetPixel[0] + i
 							currentY = targetPixel[1] + j
-							# print(f"{currentX},{currentY}")
 							if (0 <= currentX < ccl_input_image.width
 								and 0 <= currentY < ccl_input_image.height):
 								if (is_foreground(ccl_input_image.getpixel((currentX, currentY)), average_colour, foreground_threshold)
 									and labelMatrix.getPixel(currentX, currentY) == None):
-									# print(f"Added to queue {labelMatrix.getPixel(currentX, currentY)}")
 									labelMatrix.setPixel(currentX, currentY, currentLabel)
 									label_counts[currentLabel] = label_counts.get(currentLabel, 0) + 1
 									pixelQueue.append((currentX, currentY))
 
+									labeled_image.putpixel((currentX, currentY), component_colours[currentLabel % len(component_colours)])
+
 				currentLabel += 1
 		
-	print(label_counts)
-	labeled_image = Image.new("RGB", (ccl_input_image.width, ccl_input_image.height))
-	
-	for x in range(labeled_image.width):
-		for y in range(labeled_image.height):
-			# Even though documentation says it is slow, it is has been tested to be 2-3 times faster than ImageDraw
-			labeled_image.putpixel((x, y), component_colours[(labelMatrix.getPixel(x, y) or 0) % len(component_colours)])
-	
-	# output_image = labeled_image.copy()
+
+	sorted_label_counts = list(zip(sorting.selection_sort(list(label_counts.values()), list(label_counts.keys())), sorting.selection_sort(list(label_counts.values()))))
+	sorted_label_counts.reverse()
+	print(sorted_label_counts)
+
+	for (group, _) in sorted_label_counts:
+		# TODO
+		break
+
 	output_image = labeled_image.copy()
 	output_image.save(f"./6.7/output/{file}")
-	greyscale_image.save(f"./6.7/output/gs-{file}")
 
 	end_time = time.perf_counter()
+	total_time += end_time - start_time
 	print(f"Finished in {end_time - start_time}s")
+
+print(f"Finished image analysis in {total_time:,}s for {total_pixels:,} pixels")
