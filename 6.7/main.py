@@ -1,10 +1,7 @@
 import time
-from PIL import Image, ImageDraw
+from PIL import Image
 import os
 
-from cv2 import sort
-from numpy import matrix
-from pyparsing import col
 import img_functions
 import sorting
 
@@ -38,6 +35,9 @@ class ImageLabelMatrix:
 		self.matrix[x][y] = value
 		self.group_pixels[value] = self.group_pixels.get(value, [])
 		self.group_pixels[value].append((x, y))
+	
+	def getGroupPixels(self, group):
+		return self.group_pixels[group]
 
 
 def is_foreground(colour, background=0, threshold=25):
@@ -115,12 +115,20 @@ for file in files:
 
 	sorted_label_counts = list(zip(sorting.selection_sort(list(label_counts.values()), list(label_counts.keys())), sorting.selection_sort(list(label_counts.values()))))
 	sorted_label_counts.reverse()
-	print(sorted_label_counts)
+	# print(sorted_label_counts)
 
+	group_width_dict = []
 	for (group, _) in sorted_label_counts:
-		# TODO
-		break
+		group_pixels = labelMatrix.getGroupPixels(group)
+		# print(f"Group {group}: {group_pixels}")
+		min_x = float("inf")
+		max_x = float("-inf")
+		for (x, _) in group_pixels:
+			min_x = min(min_x, x)
+			max_x = max(max_x, x)
+		group_width_dict.append((group, max_x - min_x))
 
+	print(group_width_dict)
 	output_image = labeled_image.copy()
 	output_image.save(f"./6.7/output/{file}")
 
