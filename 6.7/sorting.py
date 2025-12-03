@@ -5,19 +5,21 @@ def selection_sort(comparing_list, output_list=None):
 	if output_list == None:
 		output_list = comparing_list
 
-	current_index = 0
-	for i in range(len(comparing_list) - 1):
-		current_minimum = comparing_list[i]
+	sorted_comparing_list = comparing_list.copy()
+	sorted_output_list = output_list.copy()
+	for i in range(len(sorted_comparing_list) - 1):
+		current_minimum = sorted_comparing_list[i]
 		current_minimum_index = i
-		for j in range(len(comparing_list) - 1 - current_index):
-			if comparing_list[j + current_index] < current_minimum:
-				current_minimum = comparing_list[j + current_index]
-				current_minimum_index = j + current_index
+		for j in range(len(sorted_comparing_list) - 1 - i):
+			if sorted_comparing_list[j + i + 1] < current_minimum:
+				current_minimum = sorted_comparing_list[j + i + 1]
+				current_minimum_index = j + i + 1
 
-		comparing_list.insert(0, comparing_list.pop(current_minimum_index))
-		output_list.insert(0, output_list.pop(current_minimum_index))
-	
-	return output_list
+		popped = sorted_comparing_list.pop(current_minimum_index)
+		sorted_comparing_list.insert(i, popped)
+		sorted_output_list.insert(i, sorted_output_list.pop(current_minimum_index))
+
+	return sorted_output_list
 
 
 if __name__ == "__main__":
