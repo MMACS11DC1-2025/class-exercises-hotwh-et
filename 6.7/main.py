@@ -56,6 +56,7 @@ for file in files:
 
 	greyscale_image = img_functions.greyscale(original_image)
 	ccl_input_image = greyscale_image.copy()
+	ccl_input_image_loaded = ccl_input_image.load()
 
 	nextLabel = 1
 	labelMatrix = ImageLabelMatrix(ccl_input_image)
@@ -69,7 +70,7 @@ for file in files:
 
 	for x in range(ccl_input_image.width):
 		for y in range(ccl_input_image.height):
-			current_colour = ccl_input_image.getpixel((x, y))
+			current_colour = ccl_input_image_loaded[x, y]
 			average_colour_sum += current_colour
 			min_colour = min(min_colour, current_colour)
 			max_colour = max(max_colour, current_colour)
@@ -83,7 +84,7 @@ for file in files:
 
 	for x in range(ccl_input_image.width):
 		for y in range(ccl_input_image.height):
-			if (is_foreground(ccl_input_image.getpixel((x, y)), average_colour, foreground_threshold)
+			if (is_foreground(ccl_input_image_loaded[x, y], average_colour, foreground_threshold)
 	   			and labelMatrix.getPixel(x, y) == None):
 
 				labelMatrix.setPixel(x, y, currentLabel)
@@ -102,7 +103,7 @@ for file in files:
 							currentY = targetPixel[1] + j
 							if (0 <= currentX < ccl_input_image.width
 								and 0 <= currentY < ccl_input_image.height):
-								if (is_foreground(ccl_input_image.getpixel((currentX, currentY)), average_colour, foreground_threshold)
+								if (is_foreground(ccl_input_image_loaded[currentX, currentY], average_colour, foreground_threshold)
 									and labelMatrix.getPixel(currentX, currentY) == None):
 									labelMatrix.setPixel(currentX, currentY, currentLabel)
 									label_counts[currentLabel] = label_counts.get(currentLabel, 0) + 1
@@ -115,20 +116,50 @@ for file in files:
 
 	sorted_label_counts = list(zip(sorting.selection_sort(list(label_counts.values()), list(label_counts.keys())), sorting.selection_sort(list(label_counts.values()))))
 	sorted_label_counts.reverse()
-	# print(sorted_label_counts)
 
-	group_width_dict = []
-	for (group, _) in sorted_label_counts:
+	# After groups have been identified, determine which is the chart's line
+	group_widths = []
+	group_heights = []
+	for (group, _) in sorted_label_counts[:5]:
 		group_pixels = labelMatrix.getGroupPixels(group)
-		# print(f"Group {group}: {group_pixels}")
 		min_x = float("inf")
 		max_x = float("-inf")
 		for (x, _) in group_pixels:
 			min_x = min(min_x, x)
 			max_x = max(max_x, x)
-		group_width_dict.append((group, max_x - min_x))
+		group_widths.append((group, max_x - min_x))
 
-	print(group_width_dict)
+		min_y = float("inf")
+		max_y = float("-inf")
+		for (_, y) in group_pixels:
+			min_y = min(min_y, y)
+			max_y = max(max_y, y)
+		group_heights.append((group, max_y - min_y))
+
+	sorted_group_widths_group = reversed(sorting.selection_sort(list(map(lambda group_width : group_width[1], group_widths)), list(map(lambda group_width : group_width[0], group_widths))))
+	sorted_group_widths_width = reversed(sorting.selection_sort(list(map(lambda group_width : group_width[1], group_widths))))
+	sorted_group_widths = list(zip(sorted_group_widths_group, sorted_group_widths_width))
+
+	filtered_groups = []
+	last_width = None
+	for (group, width) in sorted_group_widths:
+		if (last_width is None 
+	  		or width >= last_width / 2):
+			filtered_groups.append((group, (width, None)))
+			last_width = width
+		else:
+			break
+	
+	filtered_group_heights = []
+	for i in range(len(filtered_groups)):
+		group = filtered_groups[i][0]
+		for (group_compare, height) in group_heights:
+			if (group == group_compare):
+				print(f"Assigned {height} to {group}")
+				filtered_groups[i] = (group, (filtered_groups[i][1][0], height))
+				break
+
+	print(filtered_groups)
 	output_image = labeled_image.copy()
 	output_image.save(f"./6.7/output/{file}")
 
