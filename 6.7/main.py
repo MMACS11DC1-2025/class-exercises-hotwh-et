@@ -1,11 +1,16 @@
 import time
 from PIL import Image
 import os
-
 import img_functions
 import sorting
 
+if not os.path.exists("./6.7/images"):
+	print("You must have images in the path: \"./6.7/images\"")
+	exit()
+
 files = os.listdir("./6.7/images")
+if not os.path.exists("./6.7/output"):
+	os.mkdir("./6.7/output")
 
 component_colours = [
 	(255, 255, 255),
@@ -24,9 +29,7 @@ class ImageLabelMatrix:
 		self.group_pixels = {}
 		for x in range(image.width):
 			self.matrix.append([])
-			for y in range(image.height):
-				self.matrix[x].append(None)
-		# self.matrix = [[None] * image.height] * image.width
+			self.matrix[x] = [None for y in range(image.height)]
 	
 	def getPixel(self, x, y):
 		return self.matrix[x][y]
@@ -80,7 +83,6 @@ for file in files:
 	foreground_threshold = colour_range * 0.2
 
 	label_counts = {}
-	labeled_image = Image.new("RGB", (ccl_input_image.width, ccl_input_image.height))
 
 	for x in range(ccl_input_image.width):
 		for y in range(ccl_input_image.height):
@@ -90,8 +92,6 @@ for file in files:
 				labelMatrix.setPixel(x, y, currentLabel)
 				label_counts[currentLabel] = label_counts.get(currentLabel, 0) + 1
 				pixelQueue.append((x, y))
-
-				labeled_image.putpixel((x, y), component_colours[currentLabel % len(component_colours)])
 
 				while len(pixelQueue) > 0:
 					targetPixel = pixelQueue.pop(0)
@@ -109,10 +109,8 @@ for file in files:
 									label_counts[currentLabel] = label_counts.get(currentLabel, 0) + 1
 									pixelQueue.append((currentX, currentY))
 
-									labeled_image.putpixel((currentX, currentY), component_colours[currentLabel % len(component_colours)])
-
-				currentLabel += 1
 		
+				currentLabel += 1
 
 	sorted_label_counts = list(zip(sorting.selection_sort(list(label_counts.values()), list(label_counts.keys())), sorting.selection_sort(list(label_counts.values()))))
 	sorted_label_counts.reverse()
@@ -120,7 +118,7 @@ for file in files:
 	# After groups have been identified, determine which is the chart's line
 	group_widths = []
 	group_heights = []
-	for (group, _) in sorted_label_counts[:5]:
+	for (group, _) in sorted_label_counts[:3]:
 		group_pixels = labelMatrix.getGroupPixels(group)
 		min_x = float("inf")
 		max_x = float("-inf")
@@ -150,16 +148,47 @@ for file in files:
 		else:
 			break
 	
-	filtered_group_heights = []
+	target_group = None
+	max_height_group = None
+	max_height = float("-inf")
 	for i in range(len(filtered_groups)):
 		group = filtered_groups[i][0]
+
 		for (group_compare, height) in group_heights:
 			if (group == group_compare):
-				print(f"Assigned {height} to {group}")
 				filtered_groups[i] = (group, (filtered_groups[i][1][0], height))
-				break
 
-	print(filtered_groups)
+				if height > max_height:
+					max_height_group = group
+					max_height = height
+				break
+		
+		target_group = max_height_group
+
+	labeled_image = Image.new("RGB", (ccl_input_image.width, ccl_input_image.height))
+	target_starting_pixels = []
+	target_ending_pixels = []
+	for pixel in labelMatrix.getGroupPixels(target_group):
+		if pixel[0] < (target_starting_pixels[0][0] if len(target_starting_pixels) > 0 else float("inf")):
+			target_starting_pixels.clear()
+			target_starting_pixels.append(pixel)
+		elif pixel[0] == target_starting_pixels[0][0]:
+			target_starting_pixels.append(pixel)
+
+		if pixel[0] > (target_ending_pixels[0][0] if len(target_ending_pixels) > 0 else float("-inf")):
+			target_ending_pixels.clear()
+			target_ending_pixels.append(pixel)
+		elif pixel[0] == target_ending_pixels[0][0]:
+			target_ending_pixels.append(pixel)
+
+		# Create an image to show the target group
+		labeled_image.putpixel(pixel, component_colours[0])
+	
+	for pixel in target_starting_pixels:
+		labeled_image.putpixel(pixel, (0, 255, 0))
+	for pixel in target_ending_pixels:
+		labeled_image.putpixel(pixel, (255, 0, 0))
+
 	output_image = labeled_image.copy()
 	output_image.save(f"./6.7/output/{file}")
 
