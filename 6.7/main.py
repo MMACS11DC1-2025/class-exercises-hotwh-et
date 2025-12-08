@@ -48,6 +48,7 @@ def is_foreground(colour, background=0, threshold=25):
 
 total_time = 0
 total_pixels = 0
+image_scores = {}
 for file in files:
 	start_time = time.perf_counter()
 	print(f"Started analyzing {file}")
@@ -197,11 +198,13 @@ for file in files:
 	ending_pixels_heights = list(map(lambda pixel : pixel[1], target_ending_pixels))
 	average_start = ccl_input_image.height - (sum(starting_pixels_heights) / len(target_starting_pixels))
 	average_end = ccl_input_image.height - (sum(ending_pixels_heights) / len(target_ending_pixels))
-	change_percent = (average_end / average_start) - 1
+	change_fraction = (average_end / average_start) - 1
 	
 	# print(f"Start: {average_start}")
 	# print(f"End: {average_end}")
-	print(f"Percent change: {change_percent * 100}%")
+	print(f"Percent change: {change_fraction * 100}%")
+
+	image_scores[file] = change_fraction
 
 	output_image = labeled_image.copy()
 	output_image.save(f"./6.7/output/{file}")
@@ -210,4 +213,8 @@ for file in files:
 	total_time += end_time - start_time
 	print(f"Finished in {end_time - start_time}s")
 
+print()
+print("="*50)
 print(f"Finished image analysis in {total_time:,}s for {total_pixels:,} pixels")
+print(f"Final scores: {image_scores}")
+print("="*50)
