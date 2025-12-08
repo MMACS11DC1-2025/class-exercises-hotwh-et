@@ -52,6 +52,9 @@ for file in files:
 	start_time = time.perf_counter()
 	print(f"Started analyzing {file}")
 
+	if not os.path.isfile(os.path.join("./6.7/images", file)):
+		print("This is not a file. Skipping")
+		continue
 	original_image = Image.open(f"./6.7/images/{file}")
 	pixels = original_image.width * original_image.height
 	print(f"Contains {pixels:,} pixels")
@@ -116,6 +119,7 @@ for file in files:
 	sorted_label_counts.reverse()
 
 	# After groups have been identified, determine which is the chart's line
+	# and which is the bottom axis
 	group_widths = []
 	group_heights = []
 	for (group, _) in sorted_label_counts[:3]:
@@ -148,9 +152,15 @@ for file in files:
 		else:
 			break
 	
+	# Target group refers to the line
+	# Axis group refers to the bottom axis
+	# From the filtered groups, use height difference to determine which is the line and axis
 	target_group = None
+	axis_group = None
 	max_height_group = None
 	max_height = float("-inf")
+	min_height_group = None
+	min_height = float("inf")
 	for i in range(len(filtered_groups)):
 		group = filtered_groups[i][0]
 
@@ -158,12 +168,17 @@ for file in files:
 			if (group == group_compare):
 				filtered_groups[i] = (group, (filtered_groups[i][1][0], height))
 
+				if height < min_height:
+					min_height_group = group
+					min_height = height
 				if height > max_height:
 					max_height_group = group
 					max_height = height
 				break
 		
-		target_group = max_height_group
+	target_group = max_height_group
+	if max_height_group != min_height_group:
+		axis_group = min_height_group
 
 	labeled_image = Image.new("RGB", (ccl_input_image.width, ccl_input_image.height))
 	target_starting_pixels = []
@@ -183,11 +198,22 @@ for file in files:
 
 		# Create an image to show the target group
 		labeled_image.putpixel(pixel, component_colours[0])
+	axis_pixels = labelMatrix.getGroupPixels(axis_group) if axis_group is not None else []
 	
 	for pixel in target_starting_pixels:
 		labeled_image.putpixel(pixel, (0, 255, 0))
 	for pixel in target_ending_pixels:
 		labeled_image.putpixel(pixel, (255, 0, 0))
+	for pixel in axis_pixels:
+		labeled_image.putpixel(pixel, (0, 0, 255))
+	
+	starting_pixels_heights = map(lambda pixel : pixel[1], target_starting_pixels)
+	ending_pixels_heights = map(lambda pixel : pixel[1], target_ending_pixels)
+	average_start = sum(starting_pixels_heights) / len(target_starting_pixels)
+	average_end = sum(ending_pixels_heights) / len(target_ending_pixels)
+	
+	print(f"Start: {average_start}")
+	print(f"End: {average_end}")
 
 	output_image = labeled_image.copy()
 	output_image.save(f"./6.7/output/{file}")
