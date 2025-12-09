@@ -23,15 +23,15 @@ Using the new skills in units 5 and 6, you will implement a computer vision algo
 - [X] Write a function, is_target_feature, that accepts pixel data (e.g. colour channels as RGB tuple inputs) and returns a specific, useful output (e.g., returns True if the pixel matches your custom feature definition else False, or a weight) (10 pts)
 #### Task 2: Pixel Iteration and List Building
 - [-] Use nested loops to iterate over all pixels **in a set of at least 10 images** and calculate your "Feature Density Score" for each image (10 pts)
-- [ ] Append the filename and score to a master list, demonstrating list manipulation and the use of the append() method (5 pts)
+- [X] Append the filename and score to a master list, demonstrating list manipulation and the use of the append() method (5 pts)
 #### Task 3: Code Profiling
-- [ ] Measure the precise time taken for the program to complete the pixel processing loops using the time module (3 pts)
-- [ ] Output this time in a human-readable report, using string formatting to ensure the output displays accurately to three decimal places (2 pts)
+- [X] Measure the precise time taken for the program to complete the pixel processing loops using the time module (3 pts)
+- [X] Output this time in a human-readable report, using string formatting to ensure the output displays accurately to three decimal places (2 pts)
 
 ### Algorithms and Efficiency (Unit 6)
 #### Task 4: Selection Sort
-- [ ] Implement the Selection Sort algorithm function yourself (not using built-in libraries for sorting) to sort the master list based on the calculated Feature Density Score (highest to lowest) (12 pts)
-- [ ] Output the top 5 results using list slicing (3 pts)
+- [X] Implement the Selection Sort algorithm function yourself (not using built-in libraries for sorting) to sort the master list based on the calculated Feature Density Score (highest to lowest) (12 pts)
+- [X] Output the top 5 results using list slicing (3 pts)
 #### Task 5: Binary Search
 - [ ] Implement the Binary Search algorithm function yourself to search the sorted list for a specific target score (10 pts)
 

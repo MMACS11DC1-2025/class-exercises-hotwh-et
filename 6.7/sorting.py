@@ -1,6 +1,5 @@
 import random
 
-
 def selection_sort(comparing_list, output_list=None):
 	if output_list == None:
 		output_list = comparing_list
@@ -20,7 +19,6 @@ def selection_sort(comparing_list, output_list=None):
 		sorted_output_list.insert(i, sorted_output_list.pop(current_minimum_index))
 
 	return sorted_output_list
-
 
 if __name__ == "__main__":
 	sort_input = []

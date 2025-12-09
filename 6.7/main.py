@@ -2,6 +2,7 @@ import time
 from PIL import Image
 import os
 import img_functions
+import search
 import sorting
 
 if not os.path.exists("./6.7/images"):
@@ -48,13 +49,14 @@ def is_foreground(colour, background=0, threshold=25):
 
 total_time = 0
 total_pixels = 0
-image_scores = {}
+image_scores_list = []
 for file in files:
 	start_time = time.perf_counter()
 	print(f"Started analyzing {file}")
 
 	if not os.path.isfile(os.path.join("./6.7/images", file)):
 		print("This is not a file. Skipping")
+		print("-"*10)
 		continue
 	original_image = Image.open(f"./6.7/images/{file}").convert("RGB")
 	pixels = original_image.width * original_image.height
@@ -204,7 +206,7 @@ for file in files:
 	# print(f"End: {average_end}")
 	print(f"Percent change: {change_fraction * 100}%")
 
-	image_scores[file] = change_fraction
+	image_scores_list.append((file, change_fraction))
 
 	output_image = labeled_image.copy()
 	output_image.save(f"./6.7/output/{file}")
@@ -212,9 +214,60 @@ for file in files:
 	end_time = time.perf_counter()
 	total_time += end_time - start_time
 	print(f"Finished in {end_time - start_time}s")
+	print("-"*10)
+
+print()
+print(f"Finished image analysis in {total_time:,}s for {total_pixels:,} pixels")
+print(f"Average pixels per second: {total_pixels / total_time:,.3f}")
+print()
+
+start_time = time.perf_counter()
+print("Sorting scores...")
+image_filenames = list(map(lambda score : score[0], image_scores_list))
+image_scores = list(map(lambda score : score[1], image_scores_list))
+image_scores_sorted = list(zip(
+	sorting.selection_sort(image_scores, image_filenames),
+	sorting.selection_sort(image_scores)
+))[::-1]
+end_time = time.perf_counter()
+total_time += end_time - start_time
+print(f"Finished sorting in {end_time - start_time}s")
 
 print()
 print("="*50)
-print(f"Finished image analysis in {total_time:,}s for {total_pixels:,} pixels")
-print(f"Final scores: {image_scores}")
+print()
+print("Final scores (only top 5 are shown)")
+print("-"*10)
+print(f"{"Filename":<30s}{"Score":>8}")
+print()
+for filename, score in image_scores_sorted[:5]:
+	print(f"{filename:<30s}{" " if score >= 0 else ""}{score * 100:.3f}%")
+print()
 print("="*50)
+
+print(f"Finished all work in {total_time}s")
+print()
+
+while True:
+	response = input("For which score would you like to see the original graph? (enter \"exit\" to exit) ")
+	if response.strip().lower() == "exit":
+		break
+
+	response_num = None
+	try:
+		response_num = float(response)
+	except ValueError:
+		print("That is not a number!")
+		continue
+
+	if response_num is None:
+		continue
+
+	searched_image_index = search.binary_search(image_scores, response_num)
+	if searched_image_index is None or searched_image_index > len(image_scores_list):
+		print("Could not find an image wiht that score!")
+		continue
+
+	filename = image_scores_list[searched_image_index][0]
+
+	print(filename)
