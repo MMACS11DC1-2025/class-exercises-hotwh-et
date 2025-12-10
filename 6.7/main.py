@@ -13,17 +13,6 @@ files = os.listdir("./6.7/images")
 if not os.path.exists("./6.7/output"):
 	os.mkdir("./6.7/output")
 
-component_colours = [
-	(255, 255, 255),
-	(0, 0, 0),
-	(255, 0, 0),
-	(0, 255, 0),
-	(0, 0, 255),
-	(255, 255, 0),
-	(255, 0, 255),
-	(0, 255, 255),
-]
-
 class ImageLabelMatrix:
 	def __init__(self, image: Image.Image):
 		self.matrix = []
@@ -50,6 +39,10 @@ def is_foreground(colour, background=0, threshold=25):
 total_time = 0
 total_pixels = 0
 image_scores_list = []
+
+original_images = {}
+isolated_chart_images = {}
+
 for file in files:
 	start_time = time.perf_counter()
 	print(f"Started analyzing {file}")
@@ -59,6 +52,7 @@ for file in files:
 		print("-"*10)
 		continue
 	original_image = Image.open(f"./6.7/images/{file}").convert("RGB")
+	original_images[file] = original_image
 	pixels = original_image.width * original_image.height
 	print(f"Contains {pixels:,} pixels")
 	total_pixels += pixels
@@ -189,7 +183,7 @@ for file in files:
 			target_ending_pixels.append(pixel)
 
 		# Create an image to show the target group
-		labeled_image.putpixel(pixel, component_colours[0])
+		labeled_image.putpixel(pixel, (255, 255, 255))
 	
 	for pixel in target_starting_pixels:
 		labeled_image.putpixel(pixel, (0, 255, 0))
@@ -210,6 +204,7 @@ for file in files:
 
 	output_image = labeled_image.copy()
 	output_image.save(f"./6.7/output/{file}")
+	isolated_chart_images[file] = output_image
 
 	end_time = time.perf_counter()
 	total_time += end_time - start_time
@@ -246,11 +241,13 @@ print()
 print("="*50)
 
 print(f"Finished all work in {total_time}s")
-print()
 
+search_image_filenames = list(map(lambda score_tuple : score_tuple[0], image_scores_sorted[::-1]))
+search_image_scores = list(map(lambda score_tuple : round(score_tuple[1] * 100, 3), image_scores_sorted[::-1]))
 while True:
-	response = input("For which score would you like to see the original graph? (enter \"exit\" to exit) ")
-	if response.strip().lower() == "exit":
+	print()
+	response = input("For which score would you like to see the graph? (enter \"exit\" to exit) ").strip().strip("%").lower()
+	if response == "exit":
 		break
 
 	response_num = None
@@ -263,11 +260,25 @@ while True:
 	if response_num is None:
 		continue
 
-	searched_image_index = search.binary_search(image_scores, response_num)
+	searched_image_index = search.binary_search(search_image_scores, response_num)
 	if searched_image_index is None or searched_image_index > len(image_scores_list):
-		print("Could not find an image wiht that score!")
+		print("Could not find an image with that score!")
 		continue
 
-	filename = image_scores_list[searched_image_index][0]
+	filename = search_image_filenames[searched_image_index]
 
-	print(filename)
+	print("-"*10)
+	print(f"This score is for {filename}")
+	print("Which image would you like to see?")
+	print('Type "1" for the original image, "2" for the isolated chart, or anything else to cancel')
+	response = input("Input: ").strip().lower()
+
+	match response:
+		case "1":
+			original_images[filename].show()
+		case "2":
+			isolated_chart_images[filename].show()
+		case _:
+			continue
+	
+	print("Opening file...")
