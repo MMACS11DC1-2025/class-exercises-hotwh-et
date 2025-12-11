@@ -33,7 +33,7 @@ Using the new skills in units 5 and 6, you will implement a computer vision algo
 - [X] Implement the Selection Sort algorithm function yourself (not using built-in libraries for sorting) to sort the master list based on the calculated Feature Density Score (highest to lowest) (12 pts)
 - [X] Output the top 5 results using list slicing (3 pts)
 #### Task 5: Binary Search
-- [ ] Implement the Binary Search algorithm function yourself to search the sorted list for a specific target score (10 pts)
+- [X] Implement the Binary Search algorithm function yourself to search the sorted list for a specific target score (10 pts)
 
 ### Process
 - [ ] Algorithm design in English: outline the logic using English comments (pseudocode) before each major Python code block (3 pts)

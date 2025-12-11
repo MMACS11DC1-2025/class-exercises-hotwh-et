@@ -1,5 +1,5 @@
 import time
-from PIL import Image
+from PIL import Image, ImageDraw
 import os
 import img_functions
 import search
@@ -13,6 +13,9 @@ files = os.listdir("./6.7/images")
 if not os.path.exists("./6.7/output"):
 	os.mkdir("./6.7/output")
 
+# This class is used to manage the storage of the image labels
+# It stores the labels in a list of lists, representing a matrix of labels
+# with a default value of None. Labels are numerical values representing their group id
 class ImageLabelMatrix:
 	def __init__(self, image: Image.Image):
 		self.matrix = []
@@ -32,7 +35,7 @@ class ImageLabelMatrix:
 	def getGroupPixels(self, group):
 		return self.group_pixels[group]
 
-
+# Utility function to check if colour is different from background
 def is_foreground(colour, background=0, threshold=25):
 	return abs(colour - background) >= threshold
 
@@ -40,6 +43,8 @@ total_time = 0
 total_pixels = 0
 image_scores_list = []
 
+# These dicts store the images to be shown on request by the user
+# Format = {filename: image}
 original_images = {}
 isolated_chart_images = {}
 
@@ -47,30 +52,30 @@ for file in files:
 	start_time = time.perf_counter()
 	print(f"Started analyzing {file}")
 
+	# This is primarily designed to prevent analyzing directories
 	if not os.path.isfile(os.path.join("./6.7/images", file)):
 		print("This is not a file. Skipping")
 		print("-"*10)
 		continue
-	original_image = Image.open(f"./6.7/images/{file}").convert("RGB")
+	original_image = Image.open(f"./6.7/images/{file}")
 	original_images[file] = original_image
 	pixels = original_image.width * original_image.height
 	print(f"Contains {pixels:,} pixels")
 	total_pixels += pixels
 
-	greyscale_image = img_functions.greyscale(original_image)
+	greyscale_image = img_functions.greyscale(original_image.convert("RGB"))
 	ccl_input_image = greyscale_image.copy()
 	ccl_input_image_loaded = ccl_input_image.load()
 
 	nextLabel = 1
 	labelMatrix = ImageLabelMatrix(ccl_input_image)
 
-	pixelQueue = []
-	currentLabel = 0
-
 	average_colour_sum = 0
 	min_colour = float("inf")
 	max_colour = float("-inf")
 
+	# Get average colour which is used to detect foreground pixels
+	# Also get colour range so colour tolerance is based on colour variance
 	for x in range(ccl_input_image.width):
 		for y in range(ccl_input_image.height):
 			current_colour = ccl_input_image_loaded[x, y]
@@ -82,12 +87,16 @@ for file in files:
 	colour_range = max_colour - min_colour
 	foreground_threshold = colour_range * 0.2
 
+	currentLabel = 0
 	label_counts = {}
 
-	for x in range(ccl_input_image.width):
-		for y in range(ccl_input_image.height):
+	# Loop over every pixel and use CCL algorithm to label pixels
+	# Excludes the outline of the image, as it often contains a solid colour border which breaks graph detection
+	for x in range(2, ccl_input_image.width - 2):
+		for y in range(2, ccl_input_image.height - 2):
 			if (is_foreground(ccl_input_image_loaded[x, y], average_colour, foreground_threshold)
-	   			and labelMatrix.getPixel(x, y) == None):
+	   				and labelMatrix.getPixel(x, y) == None):
+				pixelQueue = []
 
 				labelMatrix.setPixel(x, y, currentLabel)
 				label_counts[currentLabel] = label_counts.get(currentLabel, 0) + 1
@@ -96,7 +105,7 @@ for file in files:
 				while len(pixelQueue) > 0:
 					targetPixel = pixelQueue.pop(0)
 					
-					neighbourPixels = []
+					# Check neighbour pixels using start and stop parameters
 					for i in range(-1, 2):
 						for j in range(-1, 2):
 							currentX = targetPixel[0] + i
@@ -167,6 +176,7 @@ for file in files:
 	target_group = max_height_group
 
 	labeled_image = Image.new("RGB", (ccl_input_image.width, ccl_input_image.height))
+	labeled_image_draw = ImageDraw.Draw(labeled_image)
 	target_starting_pixels = []
 	target_ending_pixels = []
 	for pixel in labelMatrix.getGroupPixels(target_group):
@@ -183,12 +193,12 @@ for file in files:
 			target_ending_pixels.append(pixel)
 
 		# Create an image to show the target group
-		labeled_image.putpixel(pixel, (255, 255, 255))
+		labeled_image_draw.point(pixel, (255, 255, 255))
 	
 	for pixel in target_starting_pixels:
-		labeled_image.putpixel(pixel, (0, 255, 0))
+		labeled_image_draw.point(pixel, (0, 255, 0))
 	for pixel in target_ending_pixels:
-		labeled_image.putpixel(pixel, (255, 0, 0))
+		labeled_image_draw.point(pixel, (255, 0, 0))
 	
 	starting_pixels_heights = list(map(lambda pixel : pixel[1], target_starting_pixels))
 	ending_pixels_heights = list(map(lambda pixel : pixel[1], target_ending_pixels))
