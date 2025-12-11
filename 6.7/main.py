@@ -121,8 +121,7 @@ for file in files:
 		
 				currentLabel += 1
 
-	sorted_label_counts = list(zip(sorting.selection_sort(list(label_counts.values()), list(label_counts.keys())), sorting.selection_sort(list(label_counts.values()))))
-	sorted_label_counts.reverse()
+	sorted_label_counts = list(sorting.selection_sort_tuples(list(label_counts.items()), 1))[::-1]
 
 	# After groups have been identified, determine which is the chart's line
 	group_widths = []
@@ -143,7 +142,8 @@ for file in files:
 			max_y = max(max_y, y)
 		group_heights.append((group, max_y - min_y))
 
-	sorted_group_widths_group = reversed(sorting.selection_sort(list(map(lambda group_width : group_width[1], group_widths)), list(map(lambda group_width : group_width[0], group_widths))))
+	# sorted_group_widths_group = reversed(sorting.selection_sort(list(map(lambda group_width : group_width[1], group_widths)), list(map(lambda group_width : group_width[0], group_widths))))
+	sorted_group_widths_group = [widths[0] for widths in sorting.selection_sort_tuples(group_widths, 1)]
 	sorted_group_widths_width = reversed(sorting.selection_sort(list(map(lambda group_width : group_width[1], group_widths))))
 	sorted_group_widths = list(zip(sorted_group_widths_group, sorted_group_widths_width))
 
