@@ -40,7 +40,7 @@ Using the new skills in units 5 and 6, you will implement a computer vision algo
 - [ ] Code clarity: use descriptive variable names unless they are standard loop indices (e.g. x, y) (2 pts)
 - [ ] Use of functions: structure the program using functions to organize it and reduce code duplication (2 pts)
 - [ ] Testing and robustness: include a section in your README describing testing done to ensure each of the tasks works as intended (1 pt)
-- [ ] Performance analysis: include a section in your README describing your code profiling: give an example of the report and discuss what parts of the program take the longest
+- [ ] ~~Performance analysis: include a section in your README describing your code profiling: give an example of the report and discuss what parts of the program take the longest~~
 - [ ] Challenges faced: include a section in your README describing at least one challenge faced and how you overcame it (2 pts)
 
 ### Version Control
