@@ -22,7 +22,7 @@ Using the new skills in units 5 and 6, you will implement a computer vision algo
 #### Task 1: Pixels to Data Function
 - [X] Write a function, is_target_feature, that accepts pixel data (e.g. colour channels as RGB tuple inputs) and returns a specific, useful output (e.g., returns True if the pixel matches your custom feature definition else False, or a weight) (10 pts)
 #### Task 2: Pixel Iteration and List Building
-- [-] Use nested loops to iterate over all pixels **in a set of at least 10 images** and calculate your "Feature Density Score" for each image (10 pts)
+- [X] Use nested loops to iterate over all pixels **in a set of at least 10 images** and calculate your "Feature Density Score" for each image (10 pts)
 - [X] Append the filename and score to a master list, demonstrating list manipulation and the use of the append() method (5 pts)
 #### Task 3: Code Profiling
 - [X] Measure the precise time taken for the program to complete the pixel processing loops using the time module (3 pts)
@@ -36,27 +36,27 @@ Using the new skills in units 5 and 6, you will implement a computer vision algo
 - [X] Implement the Binary Search algorithm function yourself to search the sorted list for a specific target score (10 pts)
 
 ### Process
-- [ ] Algorithm design in English: outline the logic using English comments (pseudocode) before each major Python code block (3 pts)
-- [ ] Code clarity: use descriptive variable names unless they are standard loop indices (e.g. x, y) (2 pts)
-- [ ] Use of functions: structure the program using functions to organize it and reduce code duplication (2 pts)
+- [X] Algorithm design in English: outline the logic using English comments (pseudocode) before each major Python code block (3 pts)
+- [X] Code clarity: use descriptive variable names unless they are standard loop indices (e.g. x, y) (2 pts)
+- [X] Use of functions: structure the program using functions to organize it and reduce code duplication (2 pts)
 - [ ] Testing and robustness: include a section in your README describing testing done to ensure each of the tasks works as intended (1 pt)
 - [ ] Performance analysis: include a section in your README describing your code profiling: give an example of the report and discuss what parts of the program take the longest
 - [ ] Challenges faced: include a section in your README describing at least one challenge faced and how you overcame it (2 pts)
 
 ### Version Control
-- [ ] Source code is committed to repository on Github with at least 5 meaningful commits on different days prior to deadline (10 pts)
+- [X] Source code is committed to repository on Github with at least 5 meaningful commits on different days prior to deadline (10 pts)
 
 ## **QUALITY CRITERIA**
 ### Code Quality and Efficiency
-- [ ] Code quality: Clean, readable structure (2 pts)
-- [ ] Efficiency: Evidence of thinking about algorithmic complexity throughout the code (2 pts)
-- [ ] The program handles potential errors and edge cases effectively (2 pts)
+- [X] Code quality: Clean, readable structure (2 pts)
+- [X] Efficiency: Evidence of thinking about algorithmic complexity throughout the code (2 pts)
+- [X] The program handles potential errors and edge cases effectively (2 pts)
 - [ ] Documentation polish: README is clear, concise, free of typos; also, code comments explain why decisions were made. (1 pt)
 
 ### Creativity and Originality
-- [ ] The chosen theme and visual feature are unique, interesting, and insightful (2 pts)
-- [ ] Feature detection uses a more advanced process, such as pre-processing the image, using multiple pixels, or using statistical approaches to detect features (4 points)
-- [ ] Captured feature involves a real-world use-case. References a real paper, report, or dataset supporting decisions for detecting feature (4 points)
+- [X] The chosen theme and visual feature are unique, interesting, and insightful (2 pts)
+- [X] Feature detection uses a more advanced process, such as pre-processing the image, using multiple pixels, or using statistical approaches to detect features (4 points)
+- [X] Captured feature involves a real-world use-case. References a real paper, report, or dataset supporting decisions for detecting feature (4 points)
 
 ## **SUBMISSION REQUIREMENTS**
 

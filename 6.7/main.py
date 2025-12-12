@@ -91,6 +91,7 @@ for file in files:
 	label_counts = {}
 
 	# Loop over every pixel and use CCL algorithm to label pixels
+	# CCL code is based on pseudocode found online. See the README for source
 	# Excludes the outline of the image, as it often contains a solid colour border which breaks graph detection
 	for x in range(2, ccl_input_image.width - 2):
 		for y in range(2, ccl_input_image.height - 2):
@@ -111,9 +112,9 @@ for file in files:
 							currentX = targetPixel[0] + i
 							currentY = targetPixel[1] + j
 							if (0 <= currentX < ccl_input_image.width
-								and 0 <= currentY < ccl_input_image.height):
+									and 0 <= currentY < ccl_input_image.height):
 								if (is_foreground(ccl_input_image_loaded[currentX, currentY], average_colour, foreground_threshold)
-									and labelMatrix.getPixel(currentX, currentY) == None):
+										and labelMatrix.getPixel(currentX, currentY) == None):
 									labelMatrix.setPixel(currentX, currentY, currentLabel)
 									label_counts[currentLabel] = label_counts.get(currentLabel, 0) + 1
 									pixelQueue.append((currentX, currentY))
@@ -121,9 +122,11 @@ for file in files:
 		
 				currentLabel += 1
 
-	sorted_label_counts = list(sorting.selection_sort_tuples(list(label_counts.items()), 1))[::-1]
+	sorted_label_counts = sorting.selection_sort_tuples(list(label_counts.items()), 1)
+	sorted_label_counts.reverse()
 
 	# After groups have been identified, determine which is the chart's line
+	# Get the group that spans the most width and height, prioritizing width
 	group_widths = []
 	group_heights = []
 	for (group, _) in sorted_label_counts[:3]:
@@ -142,9 +145,8 @@ for file in files:
 			max_y = max(max_y, y)
 		group_heights.append((group, max_y - min_y))
 
-	# sorted_group_widths_group = reversed(sorting.selection_sort(list(map(lambda group_width : group_width[1], group_widths)), list(map(lambda group_width : group_width[0], group_widths))))
-	sorted_group_widths_group = [widths[0] for widths in sorting.selection_sort_tuples(group_widths, 1)]
-	sorted_group_widths_width = reversed(sorting.selection_sort(list(map(lambda group_width : group_width[1], group_widths))))
+	sorted_group_widths_group = reversed([widths[0] for widths in sorting.selection_sort_tuples(group_widths, 1)])
+	sorted_group_widths_width = reversed(sorting.selection_sort([group_width[1] for group_width in group_widths]))
 	sorted_group_widths = list(zip(sorted_group_widths_group, sorted_group_widths_width))
 
 	filtered_groups = []
@@ -175,6 +177,7 @@ for file in files:
 		
 	target_group = max_height_group
 
+	# Make a labeled image that shows the isolated chart, with the start and end highlighted in green and red respectively
 	labeled_image = Image.new("RGB", (ccl_input_image.width, ccl_input_image.height))
 	labeled_image_draw = ImageDraw.Draw(labeled_image)
 	target_starting_pixels = []
@@ -192,7 +195,6 @@ for file in files:
 		elif pixel[0] == target_ending_pixels[0][0]:
 			target_ending_pixels.append(pixel)
 
-		# Create an image to show the target group
 		labeled_image_draw.point(pixel, (255, 255, 255))
 	
 	for pixel in target_starting_pixels:
@@ -200,14 +202,13 @@ for file in files:
 	for pixel in target_ending_pixels:
 		labeled_image_draw.point(pixel, (255, 0, 0))
 	
-	starting_pixels_heights = list(map(lambda pixel : pixel[1], target_starting_pixels))
-	ending_pixels_heights = list(map(lambda pixel : pixel[1], target_ending_pixels))
+	# Get the average height of both ends
+	starting_pixels_heights = [pixel[1] for pixel in target_starting_pixels]
+	ending_pixels_heights = [pixel[1] for pixel in target_ending_pixels]
 	average_start = ccl_input_image.height - (sum(starting_pixels_heights) / len(target_starting_pixels))
 	average_end = ccl_input_image.height - (sum(ending_pixels_heights) / len(target_ending_pixels))
 	change_fraction = (average_end / average_start) - 1
 	
-	# print(f"Start: {average_start}")
-	# print(f"End: {average_end}")
 	print(f"Percent change: {change_fraction * 100}%")
 
 	image_scores_list.append((file, change_fraction))
@@ -228,12 +229,10 @@ print()
 
 start_time = time.perf_counter()
 print("Sorting scores...")
-image_filenames = list(map(lambda score : score[0], image_scores_list))
-image_scores = list(map(lambda score : score[1], image_scores_list))
-image_scores_sorted = list(zip(
-	sorting.selection_sort(image_scores, image_filenames),
-	sorting.selection_sort(image_scores)
-))[::-1]
+image_filenames = [score[0] for score in image_scores_list]
+image_scores = [score[1] for score in image_scores_list]
+image_scores_sorted = sorting.selection_sort_tuples(list(zip(image_filenames, image_scores)), 1)
+image_scores_sorted.reverse()
 end_time = time.perf_counter()
 total_time += end_time - start_time
 print(f"Finished sorting in {end_time - start_time}s")
@@ -252,8 +251,9 @@ print("="*50)
 
 print(f"Finished all work in {total_time}s")
 
-search_image_filenames = list(map(lambda score_tuple : score_tuple[0], image_scores_sorted[::-1]))
-search_image_scores = list(map(lambda score_tuple : round(score_tuple[1] * 100, 3), image_scores_sorted[::-1]))
+# Take input from user and use binary search to get the image from stored anaylzed images
+search_image_filenames = [score_tuple[0] for score_tuple in reversed(image_scores_sorted)]
+search_image_scores = [round(score_tuple[1] * 100, 3) for score_tuple in reversed(image_scores_sorted)]
 while True:
 	print()
 	response = input("For which score would you like to see the graph? (enter \"exit\" to exit) ").strip().strip("%").lower()
@@ -279,6 +279,7 @@ while True:
 
 	print("-"*10)
 	print(f"This score is for {filename}")
+	# Allow the user to choose to see the original image or the labeled isolated chart
 	print("Which image would you like to see?")
 	print('Type "1" for the original image, "2" for the isolated chart, or anything else to cancel')
 	response = input("Input: ").strip().lower()
@@ -291,4 +292,5 @@ while True:
 		case _:
 			continue
 	
+	# Opening the file can sometimes take a while. Show a message so the user knows it is in progress
 	print("Opening file...")
