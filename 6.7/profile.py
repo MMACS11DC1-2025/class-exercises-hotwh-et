@@ -9,8 +9,9 @@ import time
 # 2 = Selection sort
 # 3 = List comprehension vs. map
 # 4 = List reversing
-PROFILE_MODE = 4
-COUNT = 2
+# 5 = List move (swap vs pop and insert)
+PROFILE_MODE = 5
+COUNT = 1000
 IMAGE_DIMENSIONS = (1000, 1000)
 LIST_LENGTH = int(1e6)
 
@@ -129,6 +130,28 @@ def profile_list_reverse():
 	end = time.perf_counter()
 	print(f"Finished list reverse in {end - start:f}s")
 
+def profile_list_move():
+	list_input = [i for i in range(LIST_LENGTH)]
+
+	print(f"Created input with {LIST_LENGTH:,} elements")
+
+	print("Starting list pop and insert")
+	list_copy = list_input.copy()
+	start = time.perf_counter()
+	for i in range(COUNT):
+		list_copy.insert(0, list_copy.pop())
+	end = time.perf_counter()
+	print(f"Finished list pop and insert in {end - start:f}s")
+
+	print("Starting list swap")
+	list_copy = list_input.copy()
+	start = time.perf_counter()
+	for i in range(COUNT):
+		list_copy[0], list_copy[len(list_copy) - 1] = list_copy[len(list_copy) - 1], list_copy[0]
+	end = time.perf_counter()
+	print(f"Finished list swap in {end - start:f}s")
+
+
 match PROFILE_MODE:
 	case 0:
 		profile_get_pixel()
@@ -140,5 +163,7 @@ match PROFILE_MODE:
 		profile_list_loop()
 	case 4:
 		profile_list_reverse()
+	case 5:
+		profile_list_move()
 	case _:
 		print("Invalid profile mode")
