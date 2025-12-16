@@ -76,13 +76,15 @@ for file in files:
 
 	# Get average colour which is used to detect foreground pixels
 	# Also get colour range so colour tolerance is based on colour variance
+	temp_start_time = time.perf_counter()
 	for x in range(ccl_input_image.width):
 		for y in range(ccl_input_image.height):
 			current_colour = ccl_input_image_loaded[x, y]
 			average_colour_sum += current_colour
-			min_colour = min(min_colour, current_colour)
-			max_colour = max(max_colour, current_colour)
+			min_colour = min_colour if min_colour < current_colour else current_colour
+			max_colour = max_colour if max_colour > current_colour else current_colour
 
+	print(f"Finished initializing in {time.perf_counter() - temp_start_time:f}s")
 	average_colour = average_colour_sum / (ccl_input_image.width * ccl_input_image.height)
 	colour_range = max_colour - min_colour
 	foreground_threshold = colour_range * 0.2
@@ -90,6 +92,7 @@ for file in files:
 	currentLabel = 0
 	label_counts = {}
 
+	ccl_start_time = time.perf_counter()
 	# Loop over every pixel and use CCL algorithm to label pixels
 	# CCL code is based on pseudocode found online. See the README for source
 	# Excludes the outline of the image, as it often contains a solid colour border which breaks graph detection
@@ -122,6 +125,8 @@ for file in files:
 		
 				currentLabel += 1
 
+	ccl_end_time = time.perf_counter()
+	print(f"Finished labelling in {ccl_end_time - ccl_start_time:f}s")
 	sorted_label_counts = sorting.selection_sort_tuples(list(label_counts.items()), 1)
 	sorted_label_counts.reverse()
 

@@ -62,3 +62,30 @@ With all the scores determined, the top 5 are printed to the user.
 After the score for every image is calculated, the user is prompted to input a score. The program uses binary search to find the image that has this score.
 The user can then choose to see the original image, isolated chart, or to cancel. Upon selecting an image, the program will open it in their default photo
 viewer.
+
+## Performance
+For the whole program, each individual image is timed and recorded, along with the total time for all images and average time per pixel. This shows how long
+the program takes to run, and if optimization is necessary.
+
+### Program speed
+Through testing, it was determined that the program typically analyzes around 775,000 pixels per second. Additional profiling was added to find which part
+of the program took the longest. The longest part is the labelling, which has to go through every pixel in the image. For the sake of ths project,
+it is already as optimized as it can be.
+
+### Optimizations
+For specific operations, a lot of profiling was done. These were done in the [profiling.py](./profiling.py) file. There are numerous tests designed to find
+the fastest method where multiple options exist. For example, the first test determines if using the `getpixel()` function or `PixelAccess` class is faster.
+Upon running multiple tests, it was determined that using the `PixelAccess` class was faster. The program was then modified to use this instead. More examples
+can be found in [profiling.py](./profiling.py) file.
+
+### Time complexity
+The time complexity of most of the program is linear relative to the number of pixels. The program needs to go through every pixel in each image in order to
+do its labelling. It avoids checking the same pixel multiple times by storing if each pixel has already been checked, so that the runtime stays relative
+to the number of pixels, not the number of groups. This mean the program only checks each pixel once during this labelling process. However, each pixel is
+checked twice in total, as the average colour is obtained by checking every pixel. This is necessary to be a separate loop because the average colour is needed
+before starting the labelling process. There are also some other loops necessary to isolate the group with the line, however, these are all still linear.
+
+The only components of the program that are not linear are the binary search and selection sort. These are O(log n) and O(n^2) time respectively. The use of
+these algorithms are minimized to be only used when necessary.
+
+## Testing

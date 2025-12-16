@@ -10,8 +10,8 @@ import time
 # 3 = List comprehension vs. map
 # 4 = List reversing
 # 5 = List move (swap vs pop and insert)
-PROFILE_MODE = 5
-COUNT = 1000
+PROFILE_MODE = 6
+COUNT = int(1e8)
 IMAGE_DIMENSIONS = (1000, 1000)
 LIST_LENGTH = int(1e6)
 
@@ -151,6 +151,41 @@ def profile_list_move():
 	end = time.perf_counter()
 	print(f"Finished list swap in {end - start:f}s")
 
+def profile_min_max_2():
+	num1 = random.random()
+	num2 = random.random()
+	print("Starting min() function with 2 arguments")
+
+	start = time.perf_counter()
+	for i in range(COUNT):
+		min(num1, num2)
+	end = time.perf_counter()
+	print(f"Finished min() function with 2 arguments in {end - start:f}s")
+
+	print("Starting max() function with 2 arguments")
+
+	start = time.perf_counter()
+	for i in range(COUNT):
+		max(num1, num2)
+	end = time.perf_counter()
+	print(f"Finished max() function with 2 arguments in {end - start:f}s")
+
+	print("Starting min with ternary")
+
+	start = time.perf_counter()
+	for i in range(COUNT):
+		num1 if num1 < num2 else num2
+	end = time.perf_counter()
+	print(f"Finished min with ternary in {end - start:f}s")
+
+	print("Starting max with ternary")
+
+	start = time.perf_counter()
+	for i in range(COUNT):
+		num1 if num1 > num2 else num2
+	end = time.perf_counter()
+	print(f"Finished max with ternary in {end - start:f}s")
+
 
 match PROFILE_MODE:
 	case 0:
@@ -165,5 +200,7 @@ match PROFILE_MODE:
 		profile_list_reverse()
 	case 5:
 		profile_list_move()
+	case 6:
+		profile_min_max_2()
 	case _:
 		print("Invalid profile mode")

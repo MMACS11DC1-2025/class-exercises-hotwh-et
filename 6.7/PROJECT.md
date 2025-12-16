@@ -14,9 +14,9 @@ Using the new skills in units 5 and 6, you will implement a computer vision algo
 
 > *These items belong at the very top of your `README.md`. They give the context for everything else you do.*
 
-- [-] Choose a specific theme for which you will be scanning multiple images (3 pts)
-- [-] Clearly define the visual feature your program will detect and count (2 pts)
-- [-] Justify your feature detection with an explanation of how your chosen feature can be accurately identified (3 pts)
+- [X] Choose a specific theme for which you will be scanning multiple images (3 pts)
+- [X] Clearly define the visual feature your program will detect and count (2 pts)
+- [X] Justify your feature detection with an explanation of how your chosen feature can be accurately identified (3 pts)
 
 ### Image Processing and Feature Extraction (Unit 5)
 #### Task 1: Pixels to Data Function
