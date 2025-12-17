@@ -89,3 +89,36 @@ The only components of the program that are not linear are the binary search and
 these algorithms are minimized to be only used when necessary.
 
 ## Testing
+### Basic functionality
+Testing the program's is very simple, as it is easy to manually read the change from a graph. By comparing this to the output, it is possible to check if it
+is correct. It is important to note that the program will never be completely accurate, primarily for one significant reason. This will be discussed in the
+[Limitations](#limitations) section.
+
+### Edge cases
+The program was put through multiple tests to see how it adapts to unique images.
+
+**Text**\
+When given text, the program selects an arbitrary character and treats it as a graph. For the provided test image ([lorem-ipsum.png](./images/tests/lorem-ipsum.png),
+disabled by default, move to images folder to test), it identifies an "M" character and determines the change as 0%. This unexpected behaviour is acceptable,
+as this program is only designed to work with graphs.
+
+**Beach**\
+This image is a good test for a real photo that has no resemblance to a graph. For the provided test image ([beach.jpg](./images/tests/beach.jpg), disabled
+by default, move to images folder to test), it identifies the hills and dock as the graph, and determines the change as -16.114%. This unexpected behaviour
+is acceptable, as this program is only designed to work with graphs.
+
+## Limitations
+The primary limitation of this program is that it does not know where the bottom of the chart is. A human would do this by referencing the bottom horizontal axis
+line, yet this program cannot. It was attempted to detect this, yet no solution was found to work reliably enough to use. In order to add this functionality,
+the flexibility of being able to input almost any line graph would have been sacrificed, so it was decided to not implement this.
+
+This program makes the assumption that there is only 1 line. This is often untrue, as line graphs can have multiple lines. It was decided that supporting this
+is out of the scope of this program, and therefore it would not be supported.
+
+As stated in the [visual feature criteria](#identifying-the-visual-feature), the program assumes that the line is a contiguous region. While this is true for 
+most standard line graphs, it is occasionally incorrect, as some graphs colour different sections with different colours.
+
+## Challenges
+In order to identify the line, the image had to be categorized into different groups. As discussed previously, this program uses CCL to do this. This algorithm
+is not simple, however. There was a lot of iteration necessary to make this work, especially to determine if a pixel was a foreground or background colour.
+The only way to fix this was to test various options and manually check the results by watching the output.
