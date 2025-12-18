@@ -21,11 +21,12 @@ used in combination to check if a colour contrasts enough to be considered a for
 
 ### It is a contiguous and connected group of pixels
 A line must be connected across the entirety of its length. It is necessary to determine which pixels are connected groups. This is 
-done using [Connected Component Labelling (CCL)](https://en.wikipedia.org/wiki/Connected-component_labeling). At a high level, this
-algorithm checks each "foreground" (where foreground is desired and background is not) pixel in the image. It then checks all neighbouring
-pixels to see if they are also foreground pixels. This process is repeated until there are no new neighbour pixels that are foreground
-pixels. The "labelling" aspect of this is done by assigning a label to each connected group. After all neighbour pixels are checked, the
-label number is incremented, so different groups are given a different label.
+done using [Connected Component Labelling (CCL)](https://en.wikipedia.org/wiki/Connected-component_labeling). This is a complex
+algorithm which is the subject of many research papers. For this program, a basic version of it was implemented for simplicity. At a
+high level, this algorithm checks each "foreground" (where foreground is desired and background is not) pixel in the image. It then
+checks all neighbouring pixels to see if they are also foreground pixels. This process is repeated until there are no new neighbour
+pixels that are foreground pixels. The "labelling" aspect of this is done by assigning a label to each connected group. After all
+neighbour pixels are checked, the label number is incremented, so different groups are given a different label.
 
 This program utilized the [pseudocode given on the Wikipedia page](https://en.wikipedia.org/wiki/Connected-component_labeling#One_component_at_a_time).
 A custom class (`ImageLabelMatrix`) is used to store the labels in a matrix (list of lists) representing each pixel, which is used in
@@ -107,6 +108,11 @@ This image is a good test for a real photo that has no resemblance to a graph. F
 by default, move to images folder to test), it identifies the hills and dock as the graph, and determines the change as -16.114%. This unexpected behaviour
 is acceptable, as this program is only designed to work with graphs.
 
+## Real-world use-cases
+In many industries, line graphs are very commonly used to visualize change over time. This program automates the process of interpreting them, which can be
+very useful depending on the specific use-case. Because of their heavy usage, there are often many charts, which can be very time-consuming and tedious for
+a human to go through. This program can aid this process, although cannot be entirely trusted due to its [limitations](#limitations).
+
 ## Limitations
 The primary limitation of this program is that it does not know where the bottom of the chart is. A human would do this by referencing the bottom horizontal axis
 line, yet this program cannot. It was attempted to detect this, yet no solution was found to work reliably enough to use. In order to add this functionality,
@@ -121,4 +127,7 @@ most standard line graphs, it is occasionally incorrect, as some graphs colour d
 ## Challenges
 In order to identify the line, the image had to be categorized into different groups. As discussed previously, this program uses CCL to do this. This algorithm
 is not simple, however. There was a lot of iteration necessary to make this work, especially to determine if a pixel was a foreground or background colour.
-The only way to fix this was to test various options and manually check the results by watching the output.
+The only way to fix this was to test various options and manually check the results by watching the output. This was done by saving partially processed images
+throughout the program to see where it went wrong. For other scenarios, `print()` statements were temporarily added to see what the program was doing. Although
+simple, it was very effective. The Python Debugger tool available in the VS Code Marketplace was tried, but it was found to make the program run orders of
+magnitude slower, so it was eventually phased out.

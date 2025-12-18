@@ -76,7 +76,6 @@ for file in files:
 
 	# Get average colour which is used to detect foreground pixels
 	# Also get colour range so colour tolerance is based on colour variance
-	temp_start_time = time.perf_counter()
 	for x in range(ccl_input_image.width):
 		for y in range(ccl_input_image.height):
 			current_colour = ccl_input_image_loaded[x, y]
@@ -84,7 +83,6 @@ for file in files:
 			min_colour = min_colour if min_colour < current_colour else current_colour
 			max_colour = max_colour if max_colour > current_colour else current_colour
 
-	print(f"Finished initializing in {time.perf_counter() - temp_start_time:f}s")
 	average_colour = average_colour_sum / (ccl_input_image.width * ccl_input_image.height)
 	colour_range = max_colour - min_colour
 	foreground_threshold = colour_range * 0.2
@@ -126,7 +124,7 @@ for file in files:
 				currentLabel += 1
 
 	ccl_end_time = time.perf_counter()
-	print(f"Finished labelling in {ccl_end_time - ccl_start_time:f}s")
+	print(f"Finished labelling in {ccl_end_time - ccl_start_time:.3f}s")
 	sorted_label_counts = sorting.selection_sort_tuples(list(label_counts.items()), 1)
 	sorted_label_counts.reverse()
 
@@ -214,7 +212,7 @@ for file in files:
 	average_end = ccl_input_image.height - (sum(ending_pixels_heights) / len(target_ending_pixels))
 	change_fraction = (average_end / average_start) - 1
 	
-	print(f"Percent change: {change_fraction * 100}%")
+	print(f"Percent change: {change_fraction * 100:.3f}%")
 
 	image_scores_list.append((file, change_fraction))
 
@@ -224,11 +222,11 @@ for file in files:
 
 	end_time = time.perf_counter()
 	total_time += end_time - start_time
-	print(f"Finished in {end_time - start_time}s")
+	print(f"Finished in {end_time - start_time:.3f}s")
 	print("-"*10)
 
 print()
-print(f"Finished image analysis in {total_time:,}s for {total_pixels:,} pixels")
+print(f"Finished image analysis in {total_time:,.3f}s for {total_pixels:,} pixels")
 print(f"Average pixels per second: {total_pixels / total_time:,.3f}")
 print()
 
@@ -240,21 +238,22 @@ image_scores_sorted = sorting.selection_sort_tuples(list(zip(image_filenames, im
 image_scores_sorted.reverse()
 end_time = time.perf_counter()
 total_time += end_time - start_time
-print(f"Finished sorting in {end_time - start_time}s")
+print(f"Finished sorting in {end_time - start_time:.3f}s")
 
 print()
 print("="*50)
 print()
 print("Final scores (only top 5 are shown)")
 print("-"*10)
-print(f"{"Filename":<30s}{"Score":>8}")
+print(f"{"Filename":<30s}{"Score":>9}")
 print()
 for filename, score in image_scores_sorted[:5]:
-	print(f"{filename:<30s}{" " if score >= 0 else ""}{score * 100:.3f}%")
+	score_string = f"{score * 100:.3f}"
+	print(f"{filename:<30s}{score_string:>9s}%")
 print()
 print("="*50)
 
-print(f"Finished all work in {total_time}s")
+print(f"Finished all work in {total_time:.3f}s")
 
 # Take input from user and use binary search to get the image from stored anaylzed images
 search_image_filenames = [score_tuple[0] for score_tuple in reversed(image_scores_sorted)]
