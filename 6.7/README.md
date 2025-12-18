@@ -1,0 +1,133 @@
+# Chart Image Analyzer
+## Objective
+Determine the percent change in an image of a graph\
+The user should be able to provide an image of any line graph, and the program will isolate and analyze only the line of the chart
+
+## Identifying the visual feature
+For the line of a line chart, these facts are very commonly true, in order of most common to least common:
+- It contrasts from the background
+- It is a contiguous and connected group of pixels
+- It spans across the entire chart area
+- It spans vertical space (goes up and down)
+
+The program takes advantage of each of these traits to identify the line.
+
+### It contrasts from the background
+Logically speaking, the line must contrast in colour from the background to make it easy for humans to read. This also provides
+a clear criteria for the program to detect. To detect the contrast from the background, it is necessary to determine the background
+colour. This is done by looping over every pixel in the image to get the average colour, which is most likely at least close to the
+background colour. While doing this, it also gets the colour range to check how varied the overall colours in the image are. These are
+used in combination to check if a colour contrasts enough to be considered a foreground element.
+
+### It is a contiguous and connected group of pixels
+A line must be connected across the entirety of its length. It is necessary to determine which pixels are connected groups. This is 
+done using [Connected Component Labelling (CCL)](https://en.wikipedia.org/wiki/Connected-component_labeling). This is a complex
+algorithm which is the subject of many research papers. For this program, a basic version of it was implemented for simplicity. At a
+high level, this algorithm checks each "foreground" (where foreground is desired and background is not) pixel in the image. It then
+checks all neighbouring pixels to see if they are also foreground pixels. This process is repeated until there are no new neighbour
+pixels that are foreground pixels. The "labelling" aspect of this is done by assigning a label to each connected group. After all
+neighbour pixels are checked, the label number is incremented, so different groups are given a different label.
+
+This program utilized the [pseudocode given on the Wikipedia page](https://en.wikipedia.org/wiki/Connected-component_labeling#One_component_at_a_time).
+A custom class (`ImageLabelMatrix`) is used to store the labels in a matrix (list of lists) representing each pixel, which is used in
+later processing. All pixels with the same label hereafter will be referred to as a group.
+
+### It spans across the entire chart area
+The line of a line chart usually runs across the entire chart area so it can take advantage of the space. Although this is not always
+true, it is safe to use this as a secondary measure as it is still usually true. If the line spans across the chart, it most likely consists
+of many pixels, so only the 3 largest groups are used for future processing to increase efficiency. The widest group is determined by getting
+the left-most x value and the right-most x value of an identified group. This is repeated for each group, so the maximum can be found. However, 
+this can cause misidentifications. This is because there are also other elemnts that span a great width. Some examples include chart axes or other elements
+(as demonstrated in [stocks.png](./images/stocks.png)). As an attempt to make the program more robust, it stores multiple wide groups, instead of just 1. 
+The amount of groups it stores varies depending on the widths. The program checks from the widest to most narrow groups, and checks if the decrease is under
+2x (meaning the group is above half of the previous group). If it is, it continues, otherwise, it stops. Out of these, the final criteria is used to narrow 
+it down to just 1 if it is not already.
+
+### It spans vertical space (goes up and down)
+Typically, the line changes in vertical position. Although this is not always true, it is commonly true enough to be used if the other criteria cannot
+narrow it down to only 1. The check for this is very similar to the previous check. It finds the bottom-most y value and the top-most y value of each
+group to fine the one with the biggest difference. Out of all remaining groups, the tallest one is considered to be the final target group.
+
+## Using the identified visual feature
+As per the previously stated objective, the program must determine the change across the graph. To do this, it is necessary to get the heights (y values) of
+the start and end. This is done by finding the left-most and right-most pixels in the identified group. In most graphs, there are multiple pixels with at the
+same horizontal position. Because of this, the program averages the heights of every pixel with this x value. The difference between the start and end heights
+is the change in the graph.
+
+Additionally, the program creates a version of the image that shows the isolated chart, and the identified starting and ending pixels. This uses the ImageDraw
+class to efficiently create the image, which is stored in a dictionary.
+
+With all the scores determined, the top 5 are printed to the user.
+
+## Score searching
+After the score for every image is calculated, the user is prompted to input a score. The program uses binary search to find the image that has this score.
+The user can then choose to see the original image, isolated chart, or to cancel. Upon selecting an image, the program will open it in their default photo
+viewer.
+
+## Performance
+For the whole program, each individual image is timed and recorded, along with the total time for all images and average time per pixel. This shows how long
+the program takes to run, and if optimization is necessary.
+
+### Program speed
+Through testing, it was determined that the program typically analyzes around 775,000 pixels per second. Additional profiling was added to find which part
+of the program took the longest. The longest part is the labelling, which has to go through every pixel in the image. For the sake of ths project,
+it is already as optimized as it can be.
+
+### Optimizations
+For specific operations, a lot of profiling was done. These were done in the [profiling.py](./profiling.py) file. There are numerous tests designed to find
+the fastest method where multiple options exist. For example, the first test determines if using the `getpixel()` function or `PixelAccess` class is faster.
+Upon running multiple tests, it was determined that using the `PixelAccess` class was faster. The program was then modified to use this instead. More examples
+can be found in [profiling.py](./profiling.py) file.
+
+### Time complexity
+The time complexity of most of the program is linear relative to the number of pixels. The program needs to go through every pixel in each image in order to
+do its labelling. It avoids checking the same pixel multiple times by storing if each pixel has already been checked, so that the runtime stays relative
+to the number of pixels, not the number of groups. This mean the program only checks each pixel once during this labelling process. However, each pixel is
+checked twice in total, as the average colour is obtained by checking every pixel. This is necessary to be a separate loop because the average colour is needed
+before starting the labelling process. There are also some other loops necessary to isolate the group with the line, however, these are all still linear.
+
+The only components of the program that are not linear are the binary search and selection sort. These are O(log n) and O(n^2) time respectively. The use of
+these algorithms are minimized to be only used when necessary.
+
+## Testing
+### Basic functionality
+Testing the program's is very simple, as it is easy to manually read the change from a graph. By comparing this to the output, it is possible to check if it
+is correct. It is important to note that the program will never be completely accurate, primarily for one significant reason. This will be discussed in the
+[Limitations](#limitations) section.
+
+### Edge cases
+The program was put through multiple tests to see how it adapts to unique images.
+
+**Text**\
+When given text, the program selects an arbitrary character and treats it as a graph. For the provided test image ([lorem-ipsum.png](./images/tests/lorem-ipsum.png),
+disabled by default, move to images folder to test), it identifies an "M" character and determines the change as 0%. This unexpected behaviour is acceptable,
+as this program is only designed to work with graphs.
+
+**Beach**\
+This image is a good test for a real photo that has no resemblance to a graph. For the provided test image ([beach.jpg](./images/tests/beach.jpg), disabled
+by default, move to images folder to test), it identifies the hills and dock as the graph, and determines the change as -16.114%. This unexpected behaviour
+is acceptable, as this program is only designed to work with graphs.
+
+## Real-world use-cases
+In many industries, line graphs are very commonly used to visualize change over time. This program automates the process of interpreting them, which can be
+very useful depending on the specific use-case. Because of their heavy usage, there are often many charts, which can be very time-consuming and tedious for
+a human to go through. This program can aid this process, although cannot be entirely trusted due to its [limitations](#limitations).
+
+## Limitations
+The primary limitation of this program is that it does not know where the bottom of the chart is. A human would do this by referencing the bottom horizontal axis
+line, yet this program cannot. It was attempted to detect this, yet no solution was found to work reliably enough to use. In order to add this functionality,
+the flexibility of being able to input almost any line graph would have been sacrificed, so it was decided to not implement this.
+
+This program makes the assumption that there is only 1 line. This is often untrue, as line graphs can have multiple lines. It was decided that supporting this
+is out of the scope of this program, and therefore it would not be supported.
+
+As stated in the [visual feature criteria](#identifying-the-visual-feature), the program assumes that the line is a contiguous region. While this is true for 
+most standard line graphs, it is occasionally incorrect, as some graphs colour different sections with different colours.
+
+## Challenges
+In order to identify the line, the image had to be categorized into different groups. As discussed previously, this program uses CCL to do this. This algorithm
+is not simple, however. There was a lot of iteration necessary to make this work, especially to determine if a pixel was a foreground or background colour.
+The only way to fix this was to test various options and manually check the results by watching the output. This was done by saving partially processed images
+throughout the program to see where it went wrong. For other scenarios, `print()` statements were temporarily added to see what the program was doing. Although
+simple, it was very effective. The Python Debugger tool available in the VS Code Marketplace was tried, but it was found to make the program run orders of
+magnitude slower, so it was eventually phased out.
