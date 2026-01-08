@@ -208,7 +208,7 @@ class Game:
 		self.active_level = None
 		self.active_level_surface = None
 	
-	def render_level(self):
+	def render_level(self, level: Level):
 		return None
 	
 if __name__ == "__main__" :
