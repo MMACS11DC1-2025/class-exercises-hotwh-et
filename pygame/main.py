@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import enum
 import json
 import os
@@ -21,15 +22,41 @@ COLOURS = {
 class Game:
 	class State(enum.Enum):
 		MAIN_MENU = enum.auto(),
-		LEVEL_MENU = enum.auto()
+		LEVEL_MENU = enum.auto(),
+		PLAYING_LEVEL = enum.auto(),
 	
 	class Level:
+		class Object(ABC):
+			code: str
+			kills: bool
+			# Relative rectangle where (10, 10) is the bottom right
+			hitbox_rect: pygame.Rect
+
+			def __init__(self, pos: tuple[int, int]):
+				absolute_pos = (pos[0] + self.hitbox_rect.left, pos[1] + self.hitbox_rect.top)
+				self.absolute_hitbox_rect = pygame.Rect(absolute_pos, self.hitbox_rect.size)
+			
+			def kills_player(self, player_rect: pygame.Rect):
+				return self.kills and player_rect.colliderect(self.absolute_hitbox_rect)
+
+			def grounds_player(self, player_rect: pygame.Rect):
+				return player_rect.colliderect(self.absolute_hitbox_rect) and player_rect.bottom < self.hitbox_rect.top
+		
+		class Spike(Object):
+			code = "S1"
+			kills = True
+			hitbox_rect = pygame.Rect(2, 2, 6, 6)
+
+		objects: list[Object] = [
+			Spike
+		]
+
 		def __init__(self, name, music, difficulty, colour, level):
-			self.name = name
-			self.music = music
-			self.difficulty = difficulty
-			self.colour = colour
-			self.level = level
+			self.name: str = name
+			self.music: str = music
+			self.difficulty: int = difficulty
+			self.colour: tuple[int, int, int] = tuple(colour)
+			self.level: list[list[Game.Level.Object]] = level
 
 		@staticmethod
 		def parse_level(levelData: str) -> Self | None:
@@ -45,13 +72,29 @@ class Game:
 			except (ValueError, AssertionError):
 				return None
 			
+			level_strings = level_data["level"]
+			level_objects = []
+			for y in range(len(level_strings)):
+				row = level_strings[y]
+				level_objects.append([None for column in range(len(row))])
+				for x in range(len(row)):
+					string = row[x]
+					for object_option in Game.Level.objects:
+						if object_option.code == string:
+							level_objects[y][x] = object_option
+							break
+						level_objects[y][x] = None
+			
 			return Game.Level(
 					level_data["name"],
 					level_data["music"],
 					level_data["difficulty"],
 					level_data["colour"],
-					level_data["level"],
+					level_objects,
 			)
+		
+		def __str__(self):
+			return f"{self.name=};{self.music=};{self.difficulty=};{self.colour=};{self.level=}"
 			
 
 	def __init__(self):
@@ -66,6 +109,9 @@ class Game:
 		self.shown_level_index = 0
 
 		self.levels = self.get_levels()
+
+		self.active_level = None
+		self.active_level_surface: pygame.Surface = None
 	
 	def get_levels(self) -> list[Level]:
 		if not os.path.exists(LEVEL_PATH):
@@ -88,6 +134,7 @@ class Game:
 			"mouse": False,
 			"left": False,
 			"right": False,
+			"escape": False,
 		}
 
 		for event in pygame.event.get():
@@ -101,6 +148,7 @@ class Game:
 			if event.type == KEYDOWN:
 				buttons_pressed["left"] = event.key == K_LEFT
 				buttons_pressed["right"] = event.key == K_RIGHT
+				buttons_pressed["escape"] = event.key == K_ESCAPE
 
 		self.display_surf.fill((0, 0, 0))
 		match self.state:
@@ -131,16 +179,38 @@ class Game:
 
 				pygame.draw.circle(self.display_surf, (255, 255, 0), (40, 40), 20)
 				pygame.draw.circle(self.display_surf, (0, 255, 0), (40, 40), 15)
-				if (buttons_pressed["mouse"]
-						and pos_in_circle((40, 40), 20, pygame.mouse.get_pos())):
+				if buttons_pressed["mouse"]:
+					if pos_in_circle((40, 40), 20, pygame.mouse.get_pos()):
+						self.state = Game.State.MAIN_MENU
+					elif textBgRect.collidepoint(pygame.mouse.get_pos()):
+						self.open_level(self.shown_level_index)
+				if buttons_pressed["escape"]:
 					self.state = Game.State.MAIN_MENU
+			case Game.State.PLAYING_LEVEL:
+				# print(self.active_level)
+
+				if buttons_pressed["escape"]:
+					self.close_level()
 
 		pygame.display.update()
-
+	
 	def open_level_menu(self):
 		self.state = Game.State.LEVEL_MENU
 		self.shown_level_index = 0
 
+	def open_level(self, index: int):
+		self.state = Game.State.PLAYING_LEVEL
+		self.active_level = self.levels[index]
+		self.active_level_surface = self.render_level(self.active_level)
+
+	def close_level(self):
+		self.state = Game.State.LEVEL_MENU
+		self.active_level = None
+		self.active_level_surface = None
+	
+	def render_level(self):
+		return None
+	
 if __name__ == "__main__" :
 	fpsClock = pygame.time.Clock()
 	game = Game()
