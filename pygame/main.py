@@ -18,6 +18,7 @@ COLOURS = {
 	"blue": (0, 255, 0),
 	"green": (0, 0, 255)
 }
+GRID_PIXEL_SIZE = 80
 
 class Game:
 	class State(enum.Enum):
@@ -188,6 +189,10 @@ class Game:
 					self.state = Game.State.MAIN_MENU
 			case Game.State.PLAYING_LEVEL:
 				# print(self.active_level)
+				targetRect = self.active_level_surface.get_rect()
+				targetRect.bottom = self.height
+				targetRect.left = 0
+				self.display_surf.blit(self.active_level_surface, targetRect)
 
 				if buttons_pressed["escape"]:
 					self.close_level()
@@ -209,7 +214,23 @@ class Game:
 		self.active_level_surface = None
 	
 	def render_level(self, level: Level):
-		return None
+		objects = level.level
+		max_width = len(objects[0])
+		for row in objects[1:]:
+			max_width = max_width if len(row) < max_width else len(row)
+		level_surface = pygame.Surface((max_width * GRID_PIXEL_SIZE, len(objects) * GRID_PIXEL_SIZE))
+		level_surface.fill((0, 0, 128))
+
+		for y in range(len(objects)):
+			row = objects[y]
+			for x in range(len(row)):
+				object = row[x]
+				if object is None:
+					continue
+				object_rect = pygame.Rect(x * GRID_PIXEL_SIZE, y * GRID_PIXEL_SIZE, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
+				pygame.draw.rect(level_surface, (0, 0, 0), object_rect)
+		
+		return level_surface
 	
 if __name__ == "__main__" :
 	fpsClock = pygame.time.Clock()
