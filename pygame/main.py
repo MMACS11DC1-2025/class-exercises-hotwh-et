@@ -3,6 +3,7 @@ import enum
 import json
 import os
 import sys
+import time
 from typing import Self
 import pygame
 from pygame.locals import *
@@ -25,11 +26,50 @@ class Game:
 		MAIN_MENU = enum.auto(),
 		LEVEL_MENU = enum.auto(),
 		PLAYING_LEVEL = enum.auto(),
-	
+
+	class Player:
+		appearance = pygame.Surface((25, 25), SRCALPHA)
+		pygame.draw.rect(appearance, (0, 128, 0), (0, 0, 25, 25))
+		pygame.draw.rect(appearance, (255, 255, 255), (0, 0, 25, 25), 1)
+		appearance = pygame.transform.scale(appearance, (GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
+
+		def __init__(self):
+			self.screen_pos = [2, 0]
+			self.vector = 0
+			self.vector_travelled = 0
+			self.vector_time = 0
+		
+		def update(self):
+			speed = self.calculate_speed(self.vector, self.vector_time, self.vector_travelled)
+			self.screen_pos[1] += speed
+			self.vector_travelled += speed
+
+		def calculate_speed(self, vector, vector_time, vector_travelled, current_time=None):
+			if current_time is None:
+				current_time = time.time()
+			
+			if vector == 0:
+				return 0
+			time_diff = current_time - vector_time
+			travelled_percent = vector_travelled / vector
+			speed = (0.5 - travelled_percent) * 0.5
+			
+			return speed
+
+		def jump(self):
+			self.apply_vector(5)
+
+		def apply_vector(self, vector):
+			self.vector = vector
+			self.vector_travelled = 0
+			self.vector_time = time.time()
+
 	class Level:
+
 		class Object(ABC):
 			code: str
 			kills: bool
+			appearance: pygame.Surface
 			# Relative rectangle where (10, 10) is the bottom right
 			hitbox_rect: pygame.Rect
 
@@ -47,9 +87,23 @@ class Game:
 			code = "S1"
 			kills = True
 			hitbox_rect = pygame.Rect(2, 2, 6, 6)
+			appearance = pygame.Surface((50, 50), SRCALPHA)
+
+			pygame.draw.polygon(appearance, (0, 0, 0), [(25, 0), (0, 50), (50, 50)])
+			pygame.draw.polygon(appearance, (255, 255, 255), [(24, 0), (0, 49), (48, 49)], 2)
+		
+		class ShortSpike(Object):
+			code = "s1"
+			kills = True
+			hitbox_rect = pygame.Rect(2, 2, 6, 6)
+			appearance = pygame.Surface((50, 50), SRCALPHA)
+
+			pygame.draw.polygon(appearance, (0, 0, 0), [(25, 25), (0, 50), (50, 50)])
+			pygame.draw.polygon(appearance, (255, 255, 255), [(24, 25), (0, 49), (48, 49)], 2)
 
 		objects: list[Object] = [
-			Spike
+			Spike,
+			ShortSpike
 		]
 
 		def __init__(self, name, music, difficulty, colour, level):
@@ -111,8 +165,11 @@ class Game:
 
 		self.levels = self.get_levels()
 
+		self.player = None
 		self.active_level = None
 		self.active_level_surface: pygame.Surface = None
+		self.last_render_time = None
+		self.level_x = 0
 	
 	def get_levels(self) -> list[Level]:
 		if not os.path.exists(LEVEL_PATH):
@@ -136,6 +193,7 @@ class Game:
 			"left": False,
 			"right": False,
 			"escape": False,
+			"jump": False,
 		}
 
 		for event in pygame.event.get():
@@ -150,6 +208,11 @@ class Game:
 				buttons_pressed["left"] = event.key == K_LEFT
 				buttons_pressed["right"] = event.key == K_RIGHT
 				buttons_pressed["escape"] = event.key == K_ESCAPE
+				buttons_pressed["jump"] = (
+					event.key == K_w
+					or event.key == K_SPACE
+					or event.key == K_UP
+				)
 
 		self.display_surf.fill((0, 0, 0))
 		match self.state:
@@ -189,10 +252,28 @@ class Game:
 					self.state = Game.State.MAIN_MENU
 			case Game.State.PLAYING_LEVEL:
 				# print(self.active_level)
-				targetRect = self.active_level_surface.get_rect()
-				targetRect.bottom = self.height
-				targetRect.left = 0
-				self.display_surf.blit(self.active_level_surface, targetRect)
+				target_rect = self.active_level_surface.get_rect()
+				target_rect.bottom = self.height
+
+				SPEED = 10 * GRID_PIXEL_SIZE
+				current_time = time.time()
+				time_diff = current_time - self.last_render_time
+				x_diff = -SPEED * time_diff
+				self.level_x = self.level_x - x_diff
+				target_rect.left = -self.level_x
+				self.last_render_time = current_time
+
+				screen = pygame.Surface(self.size)
+				screen.blit(self.active_level_surface, target_rect)
+
+				if buttons_pressed["jump"]:
+					self.player.jump()
+				self.player.update()
+
+				player_rect = pygame.Rect(self.player.screen_pos[0] * GRID_PIXEL_SIZE, self.height - (self.player.screen_pos[1] + 1) * GRID_PIXEL_SIZE, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
+				screen.blit(self.player.appearance, player_rect)
+
+				self.display_surf.blit(screen, (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
 
 				if buttons_pressed["escape"]:
 					self.close_level()
@@ -205,13 +286,18 @@ class Game:
 
 	def open_level(self, index: int):
 		self.state = Game.State.PLAYING_LEVEL
+		self.player = Game.Player()
 		self.active_level = self.levels[index]
 		self.active_level_surface = self.render_level(self.active_level)
+		self.last_render_time = time.time()
+		self.level_x = 0
 
 	def close_level(self):
 		self.state = Game.State.LEVEL_MENU
+		self.player = None
 		self.active_level = None
 		self.active_level_surface = None
+		self.last_render_time = None
 	
 	def render_level(self, level: Level):
 		objects = level.level
@@ -227,8 +313,11 @@ class Game:
 				object = row[x]
 				if object is None:
 					continue
+				
+				object_appearance = pygame.transform.scale(object.appearance, (GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
 				object_rect = pygame.Rect(x * GRID_PIXEL_SIZE, y * GRID_PIXEL_SIZE, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
-				pygame.draw.rect(level_surface, (0, 0, 0), object_rect)
+				level_surface.blit(object_appearance, object_rect)
+				# pygame.draw.rect(level_surface, (0, 0, 0), object_rect)
 		
 		return level_surface
 	
