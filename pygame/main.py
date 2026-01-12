@@ -28,44 +28,63 @@ class Game:
 		PLAYING_LEVEL = enum.auto(),
 
 	class Player:
+		# All speeds are applied per second
+		JUMP_SPEED = 0.34
+		GRAVITY_SPEED = -(JUMP_SPEED * 4.2)
+		ROTATION_SPEED = -400
+
 		appearance = pygame.Surface((25, 25), SRCALPHA)
 		pygame.draw.rect(appearance, (0, 128, 0), (0, 0, 25, 25))
 		pygame.draw.rect(appearance, (255, 255, 255), (0, 0, 25, 25), 1)
 		appearance = pygame.transform.scale(appearance, (GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
 
 		def __init__(self):
-			self.screen_pos = [2, 0]
-			self.vector = 0
-			self.vector_travelled = 0
+			self.screen_pos = [4, 0]
+			self.speed = 0
 			self.vector_time = 0
+			self.rotation = 0
+			self.last_frame_time = 0
 		
 		def update(self):
-			speed = self.calculate_speed(self.vector, self.vector_time, self.vector_travelled)
-			self.screen_pos[1] += speed
-			self.vector_travelled += speed
+			current_time = time.time()
+			frame_time = current_time - self.last_frame_time
+			self.last_frame_time = current_time
 
-		def calculate_speed(self, vector, vector_time, vector_travelled, current_time=None):
-			if current_time is None:
-				current_time = time.time()
+			vector = self.calculate_vector(self.speed, frame_time)
+			self.speed = vector
+			if vector < 0 and self.on_ground(self.screen_pos[1] + vector):
+				self.screen_pos[1] = self.ground_pos()
+				self.rotation = 0
+			else:
+				self.screen_pos[1] += vector
 			
-			if vector == 0:
-				return 0
-			time_diff = current_time - vector_time
-			travelled_percent = vector_travelled / vector
-			speed = (0.5 - travelled_percent) * 0.5
+			if not self.on_ground():
+				self.rotation += self.ROTATION_SPEED * frame_time
+
+		def calculate_vector(self, speed, time_diff):
+			vector = speed + (self.GRAVITY_SPEED * time_diff)
 			
-			return speed
+			return vector
 
 		def jump(self):
-			self.apply_vector(5)
+			if self.on_ground():
+				self.apply_speed(self.JUMP_SPEED)
 
-		def apply_vector(self, vector):
-			self.vector = vector
-			self.vector_travelled = 0
+		def apply_speed(self, speed):
+			self.speed = speed
 			self.vector_time = time.time()
+		
+		def on_ground(self, pos=None):
+			if pos is None:
+				pos = self.screen_pos[1]
+			return pos <= 0
+
+		def ground_pos(self, pos=None):
+			if pos is None:
+				pos = self.screen_pos
+			return 0
 
 	class Level:
-
 		class Object(ABC):
 			code: str
 			kills: bool
@@ -251,7 +270,6 @@ class Game:
 				if buttons_pressed["escape"]:
 					self.state = Game.State.MAIN_MENU
 			case Game.State.PLAYING_LEVEL:
-				# print(self.active_level)
 				target_rect = self.active_level_surface.get_rect()
 				target_rect.bottom = self.height
 
@@ -266,12 +284,13 @@ class Game:
 				screen = pygame.Surface(self.size)
 				screen.blit(self.active_level_surface, target_rect)
 
-				if buttons_pressed["jump"]:
+				if self.jump_input():
 					self.player.jump()
 				self.player.update()
 
 				player_rect = pygame.Rect(self.player.screen_pos[0] * GRID_PIXEL_SIZE, self.height - (self.player.screen_pos[1] + 1) * GRID_PIXEL_SIZE, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
-				screen.blit(self.player.appearance, player_rect)
+				rotated_player = pygame.transform.rotate(self.player.appearance, self.player.rotation)
+				screen.blit(rotated_player, player_rect)
 
 				self.display_surf.blit(screen, (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
 
@@ -320,6 +339,12 @@ class Game:
 				# pygame.draw.rect(level_surface, (0, 0, 0), object_rect)
 		
 		return level_surface
+
+	# Used when player can hold to repeatedly jump
+	def jump_input(self):
+		return (pygame.key.get_pressed()[K_w] or
+		pygame.key.get_pressed()[K_SPACE] or
+		pygame.key.get_pressed()[K_UP])
 	
 if __name__ == "__main__" :
 	fpsClock = pygame.time.Clock()
