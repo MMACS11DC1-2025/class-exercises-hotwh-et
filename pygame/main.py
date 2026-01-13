@@ -40,15 +40,18 @@ class Game:
 
 		def __init__(self):
 			self.screen_pos = [4, 0]
+			self.level_pos = 0
 			self.speed = 0
 			self.vector_time = 0
 			self.rotation = 0
 			self.last_frame_time = 0
 		
-		def update(self):
+		def update(self, game: "Game", level_objects: list[list["Game.Level.Object"]]=[[]]):
 			current_time = time.time()
 			frame_time = current_time - self.last_frame_time
 			self.last_frame_time = current_time
+
+			self.level_pos = game.level_x / GRID_PIXEL_SIZE + self.screen_pos[0]
 
 			vector = self.calculate_vector(self.speed, frame_time)
 			self.speed = vector
@@ -60,6 +63,22 @@ class Game:
 			
 			if not self.on_ground():
 				self.rotation += self.ROTATION_SPEED * frame_time
+
+			# hitbox_rect = pygame.Rect(self.screen_pos[0] * GRID_PIXEL_SIZE, game.height - (self.screen_pos[1] + 1) * GRID_PIXEL_SIZE, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
+			hitbox_rect = pygame.Rect((self.level_pos + self.screen_pos[1]) * GRID_PIXEL_SIZE, self.screen_pos[1] * GRID_PIXEL_SIZE, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
+			for row in level_objects:
+				for object in row:
+					if object is None:
+						continue
+					# print(object.absolute_hitbox_rect)
+					# if hitbox_rect.colliderect(object.absolute_hitbox_rect):
+					print(f"{hitbox_rect}\t{object.absolute_hitbox_rect}")
+					if object.kills_player(hitbox_rect):
+						print("KILLED")
+						game.open_level(game.levels.index(game.active_level))
+						break
+					elif object.grounds_player(hitbox_rect):
+						print("GROUNDED")
 
 		def calculate_vector(self, speed, time_diff):
 			vector = speed + (self.GRAVITY_SPEED * time_diff)
@@ -93,8 +112,13 @@ class Game:
 			hitbox_rect: pygame.Rect
 
 			def __init__(self, pos: tuple[int, int]):
-				absolute_pos = (pos[0] + self.hitbox_rect.left, pos[1] + self.hitbox_rect.top)
-				self.absolute_hitbox_rect = pygame.Rect(absolute_pos, self.hitbox_rect.size)
+				scaled_hitbox_rect = self.hitbox_rect.scale_by(GRID_PIXEL_SIZE / 10)
+				scaled_hitbox_rect.left = 0
+				scaled_hitbox_rect.top = 0
+				absolute_pos = (pos[0] + scaled_hitbox_rect.left, pos[1] - scaled_hitbox_rect.top)
+				self.absolute_hitbox_rect = pygame.Rect(absolute_pos, scaled_hitbox_rect.size)
+				# self.absolute_hitbox_rect. = pos[0] + scaled_hitbox_rect.bottom
+				print(f"{self.absolute_hitbox_rect=}")
 			
 			def kills_player(self, player_rect: pygame.Rect):
 				return self.kills and player_rect.colliderect(self.absolute_hitbox_rect)
@@ -155,7 +179,7 @@ class Game:
 					string = row[x]
 					for object_option in Game.Level.objects:
 						if object_option.code == string:
-							level_objects[y][x] = object_option
+							level_objects[y][x] = object_option((x * GRID_PIXEL_SIZE, (len(level_strings) - y - 1) * GRID_PIXEL_SIZE))
 							break
 						level_objects[y][x] = None
 			
@@ -198,12 +222,14 @@ class Game:
 
 		levels = []
 		for level_file in level_files:
+			if not level_file.endswith(".level"):
+				continue
 			with open(os.path.join(LEVEL_PATH, level_file)) as file:
 				level = Game.Level.parse_level(file.read())
 				if level == None:
 					continue
 				levels.append(level)
-		
+
 		return levels
 
 	def loop(self):
@@ -286,7 +312,7 @@ class Game:
 
 				if self.jump_input():
 					self.player.jump()
-				self.player.update()
+				self.player.update(self, self.active_level.level)
 
 				player_rect = pygame.Rect(self.player.screen_pos[0] * GRID_PIXEL_SIZE, self.height - (self.player.screen_pos[1] + 1) * GRID_PIXEL_SIZE, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
 				rotated_player = pygame.transform.rotate(self.player.appearance, self.player.rotation)
