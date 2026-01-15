@@ -49,7 +49,7 @@ class Game:
 
 			self.game = game
 			self.level_objects = level_objects
-		
+
 		def update(self):
 			current_time = time.time()
 			frame_time = current_time - self.last_frame_time
@@ -57,40 +57,39 @@ class Game:
 
 			self.level_pos = self.game.level_x / GRID_PIXEL_SIZE + self.screen_pos[0]
 
-			print(self.speed)
 			vector = self.calculate_vector(self.speed, frame_time)
-			self.speed = vector
-			if vector < 0 and self.on_ground((self.screen_pos[0] + self.level_pos, self.screen_pos[1] + vector)):
+			if vector < 0 and self.on_ground((self.level_pos, self.screen_pos[1] + vector)):
 				self.screen_pos[1] = self.ground_pos()
 				self.rotation = 0
+				self.speed = 0
 			else:
+				self.speed = vector
 				self.screen_pos[1] += vector
 			
 			if not self.on_ground():
 				self.rotation += self.ROTATION_SPEED * frame_time
 			
-			hitbox_rect = pygame.Rect(self.level_pos * GRID_PIXEL_SIZE, self.game.height - ((self.screen_pos[1] + 1)* GRID_PIXEL_SIZE), GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
+			hitbox_rect = pygame.Rect(self.level_pos * GRID_PIXEL_SIZE, self.game.height - ((self.screen_pos[1] + 1) * GRID_PIXEL_SIZE), GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
 			if DEBUG:
 				pygame.draw.rect(self.game.active_level_surface, (0, 0, 255), hitbox_rect, 1)
 			for row in self.level_objects:
 				for object in row:
 					if object is None:
 						continue
-					# print(f"{hitbox_rect}\t{object.absolute_hitbox_rect}")
 					grounded, ground_offset = object.grounds_player(hitbox_rect)
 					if object.kills_player(hitbox_rect):
 						print("KILLED")
 						self.game.reset_level()
 						return False
 					elif grounded:
-						# print(f"GROUNDED by {ground_offset / GRID_PIXEL_SIZE}")
-						# print(self.screen_pos)
+						print(f"GROUNDED by {ground_offset / GRID_PIXEL_SIZE}")
 						self.screen_pos[1] += ground_offset / GRID_PIXEL_SIZE
-						# print(self.screen_pos)
+						hitbox_rect = pygame.Rect(self.level_pos * GRID_PIXEL_SIZE, self.game.height - ((self.screen_pos[1] + 1)* GRID_PIXEL_SIZE), GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
 			return True
 
-
 		def calculate_vector(self, speed, time_diff):
+			if self.on_ground() and speed == 0:
+				return 0
 			vector = speed + (self.GRAVITY_SPEED * time_diff)
 			
 			return vector
@@ -105,24 +104,22 @@ class Game:
 		
 		def on_ground(self, pos=None):
 			if pos is None:
-				pos = self.screen_pos.copy()
-				pos[0] += self.level_pos
-			# print(pos)
+				pos = (self.level_pos, self.screen_pos[1])
 			if pos[1] <= 0:
 				return True
 
-			hitbox_rect = pygame.Rect(pos[0] * GRID_PIXEL_SIZE, self.game.height - ((pos[1] + 1)* GRID_PIXEL_SIZE), GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
+			hitbox_rect = pygame.Rect(pos[0] * GRID_PIXEL_SIZE, self.game.height - ((pos[1] + 1) * GRID_PIXEL_SIZE), GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
 			for row in self.level_objects:
 				for object in row:
 					if object is None:
 						continue
 					if object.grounds_player(hitbox_rect)[0]:
-						print(f"On ground at {hitbox_rect=} from {object.absolute_hitbox_rect}")			
+						# print(f"On ground at {hitbox_rect=} from {object.absolute_hitbox_rect}")
 						return True
 
 			return False
 
-
+		# TODO: Implement this
 		def ground_pos(self, pos=None):
 			if pos is None:
 				pos = self.screen_pos
