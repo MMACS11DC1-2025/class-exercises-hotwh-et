@@ -39,7 +39,12 @@ class Game:
 		pygame.draw.rect(appearance, (255, 255, 255), (0, 0, 25, 25), 1)
 		appearance = pygame.transform.scale(appearance, (GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
 
+		class GameMode(enum.Enum):
+			CUBE = enum.auto(),
+			SHIP = enum.auto(),
+
 		def __init__(self, game: "Game", level_objects: list[list["Game.Level.Object"]]=[[]]):
+			self.game_mode = self.GameMode.CUBE
 			self.screen_pos = [4, 0]
 			self.level_pos = 0
 			self.speed = 0
@@ -69,7 +74,7 @@ class Game:
 			if not self.on_ground():
 				self.rotation += self.ROTATION_SPEED * frame_time
 			
-			hitbox_rect = pygame.Rect(self.level_pos * GRID_PIXEL_SIZE, self.game.height - ((self.screen_pos[1] + 1) * GRID_PIXEL_SIZE), GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
+			hitbox_rect = pygame.Rect(self.level_pos * GRID_PIXEL_SIZE, self.game.active_level_surface.get_height() - ((self.screen_pos[1] + 1) * GRID_PIXEL_SIZE), GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
 			if DEBUG:
 				pygame.draw.rect(self.game.active_level_surface, (0, 0, 255), hitbox_rect, 1)
 			for row in self.level_objects:
@@ -84,7 +89,8 @@ class Game:
 					elif grounded:
 						# print(f"GROUNDED by {ground_offset / GRID_PIXEL_SIZE}")
 						self.screen_pos[1] += ground_offset / GRID_PIXEL_SIZE
-						hitbox_rect = pygame.Rect(self.level_pos * GRID_PIXEL_SIZE, self.game.height - ((self.screen_pos[1] + 1)* GRID_PIXEL_SIZE), GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
+						hitbox_rect = pygame.Rect(self.level_pos * GRID_PIXEL_SIZE, self.game.active_level_surface.get_height() - ((self.screen_pos[1] + 1)* GRID_PIXEL_SIZE), GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
+					# elif object.
 			return True
 
 		def calculate_vector(self, speed, time_diff):
@@ -95,7 +101,9 @@ class Game:
 			return vector
 
 		def jump(self):
-			if self.on_ground():
+			if self.on_ground() or (
+				self.game_mode == self.GameMode.SHIP
+			):
 				self.apply_speed(self.JUMP_SPEED)
 
 		def apply_speed(self, speed):
@@ -108,7 +116,7 @@ class Game:
 			if pos[1] <= 0:
 				return True
 
-			hitbox_rect = pygame.Rect(pos[0] * GRID_PIXEL_SIZE, self.game.height - ((pos[1] + 1) * GRID_PIXEL_SIZE), GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
+			hitbox_rect = pygame.Rect(pos[0] * GRID_PIXEL_SIZE, self.game.active_level_surface.get_height() - ((pos[1] + 1) * GRID_PIXEL_SIZE), GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
 			for row in self.level_objects:
 				for object in row:
 					if object is None:
@@ -142,57 +150,71 @@ class Game:
 	class Level:
 		class Object(ABC):
 			code: str
-			kills: bool
+			kills: bool = False
+			ground: bool = False
 			appearance: pygame.Surface
-			# Relative rectangle where (10, 10) is the bottom right
 			hitbox_rect: pygame.Rect
 
 			def __init__(self, pos: tuple[int, int]):
-				scalar = GRID_PIXEL_SIZE / 10
-				scaled_hitbox_rect = self.hitbox_rect.scale_by(scalar)
-				scaled_hitbox_rect.left = self.hitbox_rect.left * scalar
-				scaled_hitbox_rect.top = self.hitbox_rect.top * scalar
-				absolute_pos = (pos[0] + scaled_hitbox_rect.left, pos[1] + scaled_hitbox_rect.top)
-				self.absolute_hitbox_rect = pygame.Rect(absolute_pos, scaled_hitbox_rect.size)
+				absolute_pos = (pos[0] + self.hitbox_rect.left, pos[1] + self.hitbox_rect.top)
+				self.absolute_hitbox_rect = pygame.Rect(absolute_pos, self.hitbox_rect.size)
 			
 			def kills_player(self, player_rect: pygame.Rect):
+				if not self.kills and self.ground:
+					return player_rect.colliderect(self.absolute_hitbox_rect) and (
+						player_rect.right > self.absolute_hitbox_rect.left 
+						and player_rect.left < self.absolute_hitbox_rect.right)
 				return self.kills and player_rect.colliderect(self.absolute_hitbox_rect)
 
 			def grounds_player(self, player_rect: pygame.Rect):
+				if not self.ground:
+					return False, 0
 				moved_player_rect = player_rect.move(0, 1)
 				return moved_player_rect.colliderect(self.absolute_hitbox_rect), player_rect.bottom - self.absolute_hitbox_rect.top
+		
+		class PortalObject(Object):
+			game_mode: "Game.Player.GameMode"
 		
 		class Spike(Object):
 			code = "S1"
 			kills = True
-			hitbox_rect = pygame.Rect(4, 3, 2, 4)
-			appearance = pygame.Surface((50, 50), SRCALPHA)
+			hitbox_rect = pygame.Rect(GRID_PIXEL_SIZE * 0.4, GRID_PIXEL_SIZE * 0.3, GRID_PIXEL_SIZE * 0.2, GRID_PIXEL_SIZE * 0.4)
+			appearance = pygame.Surface((GRID_PIXEL_SIZE, GRID_PIXEL_SIZE), SRCALPHA)
 
-			pygame.draw.polygon(appearance, (0, 0, 0), [(25, 0), (0, 50), (50, 50)])
-			pygame.draw.polygon(appearance, (255, 255, 255), [(24, 0), (0, 49), (48, 49)], 2)
+			pygame.draw.polygon(appearance, (0, 0, 0), [(GRID_PIXEL_SIZE * 0.5, 0), (0, GRID_PIXEL_SIZE), (GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)])
+			pygame.draw.polygon(appearance, (255, 255, 255), [(GRID_PIXEL_SIZE * 0.5 - 1, 0), (0, GRID_PIXEL_SIZE - 1), (GRID_PIXEL_SIZE - 2, GRID_PIXEL_SIZE - 1)], 2)
 		
 		class ShortSpike(Object):
 			code = "s1"
 			kills = True
-			hitbox_rect = pygame.Rect(4, 7, 2, 2)
-			appearance = pygame.Surface((50, 50), SRCALPHA)
+			hitbox_rect = pygame.Rect(GRID_PIXEL_SIZE * 0.4, GRID_PIXEL_SIZE * 0.7, GRID_PIXEL_SIZE * 0.2, GRID_PIXEL_SIZE * 0.2)
+			appearance = pygame.Surface((GRID_PIXEL_SIZE, GRID_PIXEL_SIZE), SRCALPHA)
 
-			pygame.draw.polygon(appearance, (0, 0, 0), [(25, 25), (0, 50), (50, 50)])
-			pygame.draw.polygon(appearance, (255, 255, 255), [(24, 25), (0, 49), (48, 49)], 2)
+			pygame.draw.polygon(appearance, (0, 0, 0), [(GRID_PIXEL_SIZE * 0.5, GRID_PIXEL_SIZE * 0.5), (0, GRID_PIXEL_SIZE), (GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)])
+			pygame.draw.polygon(appearance, (255, 255, 255), [(GRID_PIXEL_SIZE * 0.5 - 1, GRID_PIXEL_SIZE * 0.5), (0, GRID_PIXEL_SIZE - 1), (GRID_PIXEL_SIZE - 2, GRID_PIXEL_SIZE - 1)], 2)
 		
 		class Block(Object):
 			code = "B1"
-			kills = False
-			hitbox_rect = pygame.Rect(0, 0, 10, 10)
-			appearance = pygame.Surface((20, 20))
+			ground = True
+			hitbox_rect = pygame.Rect(0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
+			appearance = pygame.Surface((GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
 
-			pygame.draw.rect(appearance, (0, 0, 0), (0, 0, 20, 20))
-			pygame.draw.rect(appearance, (255, 255, 255), (0, 0, 20, 20), 1)
+			pygame.draw.rect(appearance, (0, 0, 0), (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
+			pygame.draw.rect(appearance, (255, 255, 255), (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE), 1)
+		
+		class ShipPortal(PortalObject):
+			code = "P1"
+			# game_mode = 
+			hitbox_rect = pygame.Rect(0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE * 3)
+			appearance = pygame.Surface((GRID_PIXEL_SIZE, GRID_PIXEL_SIZE * 3), SRCALPHA)
+
+			pygame.draw.ellipse(appearance, (128, 0, 128), (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE * 3))
 
 		objects: list[Object] = [
 			Spike,
 			ShortSpike,
-			Block
+			Block,
+			ShipPortal
 		]
 
 		def __init__(self, name, music, difficulty, colour, level):
@@ -262,6 +284,7 @@ class Game:
 		self.active_level_surface: pygame.Surface = None
 		self.last_render_time = None
 		self.level_x = 0
+		self.open_level_jumped = False
 	
 	def get_levels(self) -> list[Level]:
 		if not os.path.exists(LEVEL_PATH):
@@ -307,6 +330,12 @@ class Game:
 					or event.key == K_SPACE
 					or event.key == K_UP
 				)
+			elif event.type == KEYUP:
+				if (event.key == K_w
+					or event.key == K_SPACE
+					or event.key == K_UP):
+					self.open_level_jumped = False
+
 
 		self.display_surf.fill((0, 0, 0))
 		match self.state:
@@ -343,6 +372,7 @@ class Game:
 					elif textBgRect.collidepoint(pygame.mouse.get_pos()):
 						self.open_level(self.shown_level_index)
 				elif buttons_pressed["jump"]:
+					self.open_level_jumped = True
 					self.open_level(self.shown_level_index)
 
 				if buttons_pressed["escape"]:
@@ -417,19 +447,17 @@ class Game:
 				if object is None:
 					continue
 				
-				object_appearance = pygame.transform.scale(object.appearance, (GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
-				object_rect = pygame.Rect(x * GRID_PIXEL_SIZE, y * GRID_PIXEL_SIZE, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
-				level_surface.blit(object_appearance, object_rect)
+				object_rect = pygame.Rect(x * GRID_PIXEL_SIZE, y * GRID_PIXEL_SIZE, object.appearance.get_size()[0], object.appearance.get_size()[1])
+				level_surface.blit(object.appearance, object_rect)
 				if DEBUG:
 					hitbox_rect = object.absolute_hitbox_rect
 					pygame.draw.rect(level_surface, (255, 0, 0), hitbox_rect, 1)
-				# pygame.draw.rect(level_surface, (0, 0, 0), object_rect)
 		
 		return level_surface
 
 	# Used when player can hold to repeatedly jump
 	def jump_input(self):
-		return (pygame.key.get_pressed()[K_w] or
+		return not self.open_level_jumped and (pygame.key.get_pressed()[K_w] or
 		pygame.key.get_pressed()[K_SPACE] or
 		pygame.key.get_pressed()[K_UP])
 	
