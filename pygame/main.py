@@ -82,7 +82,7 @@ class Game:
 						self.game.reset_level()
 						return False
 					elif grounded:
-						print(f"GROUNDED by {ground_offset / GRID_PIXEL_SIZE}")
+						# print(f"GROUNDED by {ground_offset / GRID_PIXEL_SIZE}")
 						self.screen_pos[1] += ground_offset / GRID_PIXEL_SIZE
 						hitbox_rect = pygame.Rect(self.level_pos * GRID_PIXEL_SIZE, self.game.height - ((self.screen_pos[1] + 1)* GRID_PIXEL_SIZE), GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
 			return True
@@ -119,11 +119,25 @@ class Game:
 
 			return False
 
-		# TODO: Implement this
 		def ground_pos(self, pos=None):
 			if pos is None:
-				pos = self.screen_pos
-			return 0
+				pos = self.level_pos
+			
+			pos = int(pos)
+			
+			scan_rect = pygame.Rect(pos * GRID_PIXEL_SIZE, 0, GRID_PIXEL_SIZE, game.active_level_surface.get_height())
+			# Only check near objects
+			start_column = pos - 2
+			columns = 5
+			highest_ground_pos = game.active_level_surface.get_height()
+			for row in self.level_objects:
+				for object in row[start_column:start_column + columns]:
+					if object is None:
+						continue
+					
+					if not object.kills and scan_rect.colliderect(object.absolute_hitbox_rect):
+						highest_ground_pos = object.absolute_hitbox_rect.top if object.absolute_hitbox_rect.top < highest_ground_pos else highest_ground_pos
+			return (game.active_level_surface.get_height() - highest_ground_pos) / GRID_PIXEL_SIZE
 
 	class Level:
 		class Object(ABC):
@@ -145,7 +159,8 @@ class Game:
 				return self.kills and player_rect.colliderect(self.absolute_hitbox_rect)
 
 			def grounds_player(self, player_rect: pygame.Rect):
-				return player_rect.colliderect(self.absolute_hitbox_rect), player_rect.bottom - self.absolute_hitbox_rect.top
+				moved_player_rect = player_rect.move(0, 1)
+				return moved_player_rect.colliderect(self.absolute_hitbox_rect), player_rect.bottom - self.absolute_hitbox_rect.top
 		
 		class Spike(Object):
 			code = "S1"
@@ -199,6 +214,8 @@ class Game:
 				assert "colour" in level_data
 				assert "level" in level_data
 			except (ValueError, AssertionError):
+				print("Error parsing level data given the follsowing data:")
+				print(f"\t{levelData}")
 				return None
 			
 			level_strings = level_data["level"]
