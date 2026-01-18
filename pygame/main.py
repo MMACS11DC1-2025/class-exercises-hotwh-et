@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 import enum
 import json
 import os
@@ -22,29 +22,44 @@ COLOURS = {
 }
 GRID_PIXEL_SIZE = 80
 
-class Game:
-	class State(enum.Enum):
-		MAIN_MENU = enum.auto(),
-		LEVEL_MENU = enum.auto(),
-		PLAYING_LEVEL = enum.auto(),
+class GameState(enum.Enum):
+	MAIN_MENU = enum.auto(),
+	LEVEL_MENU = enum.auto(),
+	PLAYING_LEVEL = enum.auto(),
 
+class GameMode(enum.Enum):
+	CUBE = enum.auto(),
+	SHIP = enum.auto(),
+
+class Game:
 	class Player:
 		# All speeds are applied per second
+		# Pygame has rotation speed CCW positive
 		JUMP_SPEED = 0.34
 		GRAVITY_SPEED = -(JUMP_SPEED * 4.2)
 		ROTATION_SPEED = -400
+		SHIP_ACCEL_SPEED = 0.03
+		SHIP_GRAVITY_SPEED = -0.8
+		# SHIP_ROTATION_SPEED = 200
+		SHIP_ROTATION_LIMIT = (-30, 30)
+		SHIP_ROTATION_LIMIT_SPEED = (-0.4, 0.4)
 
-		appearance = pygame.Surface((25, 25), SRCALPHA)
-		pygame.draw.rect(appearance, (0, 128, 0), (0, 0, 25, 25))
-		pygame.draw.rect(appearance, (255, 255, 255), (0, 0, 25, 25), 1)
-		appearance = pygame.transform.scale(appearance, (GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
+		CUBE_APPEARANCE = pygame.Surface((GRID_PIXEL_SIZE, GRID_PIXEL_SIZE), SRCALPHA)
+		pygame.draw.rect(CUBE_APPEARANCE, (0, 128, 0), (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
+		pygame.draw.rect(CUBE_APPEARANCE, (255, 255, 255), (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE), 1)
 
-		class GameMode(enum.Enum):
-			CUBE = enum.auto(),
-			SHIP = enum.auto(),
+		SHIP_APPEARANCE = pygame.Surface((GRID_PIXEL_SIZE * 1.5, GRID_PIXEL_SIZE * 1.5), SRCALPHA)
+		pygame.draw.rect(SHIP_APPEARANCE, (0, 128, 0), (GRID_PIXEL_SIZE * 0.25, GRID_PIXEL_SIZE * 0.25, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
+		pygame.draw.rect(SHIP_APPEARANCE, (255, 255, 255), (GRID_PIXEL_SIZE * 0.25, GRID_PIXEL_SIZE * 0.25, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE), 1)
+		pygame.draw.ellipse(SHIP_APPEARANCE, (128, 0, 128), (0, GRID_PIXEL_SIZE * 0.9, GRID_PIXEL_SIZE * 1.5, GRID_PIXEL_SIZE * 0.6))
 
-		def __init__(self, game: "Game", level_objects: list[list["Game.Level.Object"]]=[[]]):
-			self.game_mode = self.GameMode.CUBE
+		appearances: dict[GameMode, tuple[pygame.Surface, tuple[float, float]]] = {
+			GameMode.CUBE: (CUBE_APPEARANCE, (0, 0)),
+			GameMode.SHIP: (SHIP_APPEARANCE, (-GRID_PIXEL_SIZE*0.25, -GRID_PIXEL_SIZE*0.25)),
+		}
+
+		def __init__(self, game: "Game", level_objects: list[list["Game.Object"]]=[[]]):
+			self.game_mode = GameMode.CUBE
 			self.screen_pos = [4, 0]
 			self.level_pos = 0
 			self.speed = 0
@@ -71,8 +86,13 @@ class Game:
 				self.speed = vector
 				self.screen_pos[1] += vector
 			
-			if not self.on_ground():
-				self.rotation += self.ROTATION_SPEED * frame_time
+			match self.game_mode:
+				case GameMode.CUBE:
+					if not self.on_ground():
+						self.rotation += self.ROTATION_SPEED * frame_time
+				case GameMode.SHIP:
+					self.rotation = scale(self.speed, self.SHIP_ROTATION_LIMIT_SPEED[0], self.SHIP_ROTATION_LIMIT_SPEED[1], self.SHIP_ROTATION_LIMIT[0], self.SHIP_ROTATION_LIMIT[1])
+
 			
 			hitbox_rect = pygame.Rect(self.level_pos * GRID_PIXEL_SIZE, self.game.active_level_surface.get_height() - ((self.screen_pos[1] + 1) * GRID_PIXEL_SIZE), GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
 			if DEBUG:
@@ -83,28 +103,39 @@ class Game:
 						continue
 					grounded, ground_offset = object.grounds_player(hitbox_rect)
 					if object.kills_player(hitbox_rect):
-						print("KILLED")
 						self.game.reset_level()
 						return False
 					elif grounded:
-						# print(f"GROUNDED by {ground_offset / GRID_PIXEL_SIZE}")
 						self.screen_pos[1] += ground_offset / GRID_PIXEL_SIZE
 						hitbox_rect = pygame.Rect(self.level_pos * GRID_PIXEL_SIZE, self.game.active_level_surface.get_height() - ((self.screen_pos[1] + 1)* GRID_PIXEL_SIZE), GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
-					# elif object.
+					if object.colliding(hitbox_rect):
+						if object.portal:
+							self.switch_game_mode(object.game_mode)
 			return True
 
 		def calculate_vector(self, speed, time_diff):
 			if self.on_ground() and speed == 0:
 				return 0
-			vector = speed + (self.GRAVITY_SPEED * time_diff)
+			match self.game_mode:
+				case GameMode.CUBE:
+					gravity = self.GRAVITY_SPEED
+				case GameMode.SHIP:
+					gravity = self.SHIP_GRAVITY_SPEED
+			vector = speed + (gravity * time_diff)
 			
 			return vector
 
 		def jump(self):
-			if self.on_ground() or (
-				self.game_mode == self.GameMode.SHIP
-			):
-				self.apply_speed(self.JUMP_SPEED)
+			speed = None
+			match self.game_mode:
+				case GameMode.CUBE:
+					if self.on_ground():
+						speed = self.JUMP_SPEED
+				case GameMode.SHIP:
+					speed = self.speed + self.SHIP_ACCEL_SPEED
+			
+			if speed is not None:
+				self.apply_speed(speed)
 
 		def apply_speed(self, speed):
 			self.speed = speed
@@ -122,7 +153,6 @@ class Game:
 					if object is None:
 						continue
 					if object.grounds_player(hitbox_rect)[0]:
-						# print(f"On ground at {hitbox_rect=} from {object.absolute_hitbox_rect}")
 						return True
 
 			return False
@@ -146,77 +176,90 @@ class Game:
 					if not object.kills and scan_rect.colliderect(object.absolute_hitbox_rect):
 						highest_ground_pos = object.absolute_hitbox_rect.top if object.absolute_hitbox_rect.top < highest_ground_pos else highest_ground_pos
 			return (game.active_level_surface.get_height() - highest_ground_pos) / GRID_PIXEL_SIZE
+		
+		def switch_game_mode(self, game_mode: GameMode):
+			if game_mode is None or game_mode == self.game_mode:
+				return
+			
+			match game_mode:
+				case GameMode.SHIP:
+					self.rotation = 0
+
+			self.game_mode = game_mode
+
+	class Object(ABC):
+		code: str
+		kills: bool = False
+		ground: bool = False
+		portal: bool = False
+		game_mode: GameMode | None = None
+		appearance: pygame.Surface
+		hitbox_rect: pygame.Rect
+
+		def __init__(self, pos: tuple[int, int]):
+			absolute_pos = (pos[0] + self.hitbox_rect.left, pos[1] + self.hitbox_rect.top)
+			self.absolute_hitbox_rect = pygame.Rect(absolute_pos, self.hitbox_rect.size)
+		
+		def colliding(self, hitbox_rect: pygame.Rect):
+			return self.absolute_hitbox_rect.colliderect(hitbox_rect)
+		
+		def kills_player(self, player_rect: pygame.Rect):
+			if not self.kills and self.ground:
+				return player_rect.colliderect(self.absolute_hitbox_rect) and (
+					player_rect.right > self.absolute_hitbox_rect.left 
+					and player_rect.left < self.absolute_hitbox_rect.right)
+			return self.kills and player_rect.colliderect(self.absolute_hitbox_rect)
+
+		def grounds_player(self, player_rect: pygame.Rect):
+			if not self.ground:
+				return False, 0
+			moved_player_rect = player_rect.move(0, 1)
+			return moved_player_rect.colliderect(self.absolute_hitbox_rect), player_rect.bottom - self.absolute_hitbox_rect.top
+	
+	class Spike(Object):
+		code = "S1"
+		kills = True
+		hitbox_rect = pygame.Rect(GRID_PIXEL_SIZE * 0.4, GRID_PIXEL_SIZE * 0.3, GRID_PIXEL_SIZE * 0.2, GRID_PIXEL_SIZE * 0.4)
+		appearance = pygame.Surface((GRID_PIXEL_SIZE, GRID_PIXEL_SIZE), SRCALPHA)
+
+		pygame.draw.polygon(appearance, (0, 0, 0), [(GRID_PIXEL_SIZE * 0.5, 0), (0, GRID_PIXEL_SIZE), (GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)])
+		pygame.draw.polygon(appearance, (255, 255, 255), [(GRID_PIXEL_SIZE * 0.5 - 1, 0), (0, GRID_PIXEL_SIZE - 1), (GRID_PIXEL_SIZE - 2, GRID_PIXEL_SIZE - 1)], 2)
+	
+	class ShortSpike(Object):
+		code = "s1"
+		kills = True
+		hitbox_rect = pygame.Rect(GRID_PIXEL_SIZE * 0.4, GRID_PIXEL_SIZE * 0.7, GRID_PIXEL_SIZE * 0.2, GRID_PIXEL_SIZE * 0.2)
+		appearance = pygame.Surface((GRID_PIXEL_SIZE, GRID_PIXEL_SIZE), SRCALPHA)
+
+		pygame.draw.polygon(appearance, (0, 0, 0), [(GRID_PIXEL_SIZE * 0.5, GRID_PIXEL_SIZE * 0.5), (0, GRID_PIXEL_SIZE), (GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)])
+		pygame.draw.polygon(appearance, (255, 255, 255), [(GRID_PIXEL_SIZE * 0.5 - 1, GRID_PIXEL_SIZE * 0.5), (0, GRID_PIXEL_SIZE - 1), (GRID_PIXEL_SIZE - 2, GRID_PIXEL_SIZE - 1)], 2)
+	
+	class Block(Object):
+		code = "B1"
+		ground = True
+		hitbox_rect = pygame.Rect(0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
+		appearance = pygame.Surface((GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
+
+		pygame.draw.rect(appearance, (0, 0, 0), (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
+		pygame.draw.rect(appearance, (255, 255, 255), (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE), 1)
+	
+	class ShipPortal(Object):
+		code = "P1"
+		portal = True
+		game_mode = GameMode.SHIP
+		hitbox_rect = pygame.Rect(0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE * 3)
+		appearance = pygame.Surface((GRID_PIXEL_SIZE, GRID_PIXEL_SIZE * 3), SRCALPHA)
+
+		pygame.draw.ellipse(appearance, (128, 0, 128), (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE * 3))
+
+	objects: list[Object] = [
+		Spike,
+		ShortSpike,
+		Block,
+		ShipPortal
+	]
 
 	class Level:
-		class Object(ABC):
-			code: str
-			kills: bool = False
-			ground: bool = False
-			appearance: pygame.Surface
-			hitbox_rect: pygame.Rect
-
-			def __init__(self, pos: tuple[int, int]):
-				absolute_pos = (pos[0] + self.hitbox_rect.left, pos[1] + self.hitbox_rect.top)
-				self.absolute_hitbox_rect = pygame.Rect(absolute_pos, self.hitbox_rect.size)
-			
-			def kills_player(self, player_rect: pygame.Rect):
-				if not self.kills and self.ground:
-					return player_rect.colliderect(self.absolute_hitbox_rect) and (
-						player_rect.right > self.absolute_hitbox_rect.left 
-						and player_rect.left < self.absolute_hitbox_rect.right)
-				return self.kills and player_rect.colliderect(self.absolute_hitbox_rect)
-
-			def grounds_player(self, player_rect: pygame.Rect):
-				if not self.ground:
-					return False, 0
-				moved_player_rect = player_rect.move(0, 1)
-				return moved_player_rect.colliderect(self.absolute_hitbox_rect), player_rect.bottom - self.absolute_hitbox_rect.top
-		
-		class PortalObject(Object):
-			game_mode: "Game.Player.GameMode"
-		
-		class Spike(Object):
-			code = "S1"
-			kills = True
-			hitbox_rect = pygame.Rect(GRID_PIXEL_SIZE * 0.4, GRID_PIXEL_SIZE * 0.3, GRID_PIXEL_SIZE * 0.2, GRID_PIXEL_SIZE * 0.4)
-			appearance = pygame.Surface((GRID_PIXEL_SIZE, GRID_PIXEL_SIZE), SRCALPHA)
-
-			pygame.draw.polygon(appearance, (0, 0, 0), [(GRID_PIXEL_SIZE * 0.5, 0), (0, GRID_PIXEL_SIZE), (GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)])
-			pygame.draw.polygon(appearance, (255, 255, 255), [(GRID_PIXEL_SIZE * 0.5 - 1, 0), (0, GRID_PIXEL_SIZE - 1), (GRID_PIXEL_SIZE - 2, GRID_PIXEL_SIZE - 1)], 2)
-		
-		class ShortSpike(Object):
-			code = "s1"
-			kills = True
-			hitbox_rect = pygame.Rect(GRID_PIXEL_SIZE * 0.4, GRID_PIXEL_SIZE * 0.7, GRID_PIXEL_SIZE * 0.2, GRID_PIXEL_SIZE * 0.2)
-			appearance = pygame.Surface((GRID_PIXEL_SIZE, GRID_PIXEL_SIZE), SRCALPHA)
-
-			pygame.draw.polygon(appearance, (0, 0, 0), [(GRID_PIXEL_SIZE * 0.5, GRID_PIXEL_SIZE * 0.5), (0, GRID_PIXEL_SIZE), (GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)])
-			pygame.draw.polygon(appearance, (255, 255, 255), [(GRID_PIXEL_SIZE * 0.5 - 1, GRID_PIXEL_SIZE * 0.5), (0, GRID_PIXEL_SIZE - 1), (GRID_PIXEL_SIZE - 2, GRID_PIXEL_SIZE - 1)], 2)
-		
-		class Block(Object):
-			code = "B1"
-			ground = True
-			hitbox_rect = pygame.Rect(0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
-			appearance = pygame.Surface((GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
-
-			pygame.draw.rect(appearance, (0, 0, 0), (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
-			pygame.draw.rect(appearance, (255, 255, 255), (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE), 1)
-		
-		class ShipPortal(PortalObject):
-			code = "P1"
-			# game_mode = 
-			hitbox_rect = pygame.Rect(0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE * 3)
-			appearance = pygame.Surface((GRID_PIXEL_SIZE, GRID_PIXEL_SIZE * 3), SRCALPHA)
-
-			pygame.draw.ellipse(appearance, (128, 0, 128), (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE * 3))
-
-		objects: list[Object] = [
-			Spike,
-			ShortSpike,
-			Block,
-			ShipPortal
-		]
-
 		def __init__(self, name, music, difficulty, colour, level):
 			self.name: str = name
 			self.music: str = music
@@ -247,7 +290,7 @@ class Game:
 				level_objects.append([None for column in range(len(row))])
 				for x in range(len(row)):
 					string = row[x]
-					for object_option in Game.Level.objects:
+					for object_option in Game.objects:
 						if object_option.code == string:
 							# level_objects[y][x] = object_option((x * GRID_PIXEL_SIZE, (len(level_strings) - y - 1) * GRID_PIXEL_SIZE))
 							level_objects[y][x] = object_option((x * GRID_PIXEL_SIZE, y * GRID_PIXEL_SIZE))
@@ -268,7 +311,8 @@ class Game:
 
 	def __init__(self):
 		self.running = True
-		self.state = Game.State.MAIN_MENU
+		# self.state = GameState.MAIN_MENU
+		self.state = GameState.LEVEL_MENU
 		self.size = self.width, self.height  = 1280, 800
 
 		pygame.init()
@@ -298,7 +342,7 @@ class Game:
 				continue
 			with open(os.path.join(LEVEL_PATH, level_file)) as file:
 				level = Game.Level.parse_level(file.read())
-				if level == None:
+				if level is None:
 					continue
 				levels.append(level)
 
@@ -339,13 +383,13 @@ class Game:
 
 		self.display_surf.fill((0, 0, 0))
 		match self.state:
-			case Game.State.MAIN_MENU:
+			case GameState.MAIN_MENU:
 				pygame.draw.circle(self.display_surf, (255, 255, 0), (640, 400), 100)
 				if (buttons_pressed["mouse"]
 						and pos_in_circle((640, 400), 100, pygame.mouse.get_pos())):
 					self.open_level_menu()
 
-			case Game.State.LEVEL_MENU:
+			case GameState.LEVEL_MENU:
 				if (buttons_pressed["left"]):
 					self.shown_level_index = self.shown_level_index - 1 if self.shown_level_index > 0 else len(self.levels) - 1
 				elif (buttons_pressed["right"]):
@@ -368,7 +412,7 @@ class Game:
 				pygame.draw.circle(self.display_surf, (0, 255, 0), (40, 40), 15)
 				if buttons_pressed["mouse"]:
 					if pos_in_circle((40, 40), 20, pygame.mouse.get_pos()):
-						self.state = Game.State.MAIN_MENU
+						self.state = GameState.MAIN_MENU
 					elif textBgRect.collidepoint(pygame.mouse.get_pos()):
 						self.open_level(self.shown_level_index)
 				elif buttons_pressed["jump"]:
@@ -376,8 +420,8 @@ class Game:
 					self.open_level(self.shown_level_index)
 
 				if buttons_pressed["escape"]:
-					self.state = Game.State.MAIN_MENU
-			case Game.State.PLAYING_LEVEL:
+					self.state = GameState.MAIN_MENU
+			case GameState.PLAYING_LEVEL:
 				target_rect = self.active_level_surface.get_rect()
 				target_rect.bottom = self.height
 
@@ -397,8 +441,9 @@ class Game:
 				if not self.player.update():
 					return
 
-				player_rect = pygame.Rect(self.player.screen_pos[0] * GRID_PIXEL_SIZE, self.height - (self.player.screen_pos[1] + 1) * GRID_PIXEL_SIZE, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
-				rotated_player = pygame.transform.rotate(self.player.appearance, self.player.rotation)
+				player_appearance = self.player.appearances[self.player.game_mode]
+				player_rect = pygame.Rect(self.player.screen_pos[0] * GRID_PIXEL_SIZE + player_appearance[1][0], (self.height - (self.player.screen_pos[1] + 1) * GRID_PIXEL_SIZE) + player_appearance[1][1], GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
+				rotated_player = pygame.transform.rotate(player_appearance[0], self.player.rotation)
 				screen.blit(rotated_player, player_rect)
 
 				self.display_surf.blit(screen, (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
@@ -409,11 +454,11 @@ class Game:
 		pygame.display.update()
 	
 	def open_level_menu(self):
-		self.state = Game.State.LEVEL_MENU
+		self.state = GameState.LEVEL_MENU
 		self.shown_level_index = 0
 
 	def open_level(self, index: int):
-		self.state = Game.State.PLAYING_LEVEL
+		self.state = GameState.PLAYING_LEVEL
 		self.active_level = self.levels[index]
 		self.player = Game.Player(self, self.active_level.level)
 		self.active_level_surface = self.render_level(self.active_level)
@@ -421,7 +466,7 @@ class Game:
 		self.level_x = 0
 
 	def close_level(self):
-		self.state = Game.State.LEVEL_MENU
+		self.state = GameState.LEVEL_MENU
 		self.player = None
 		self.active_level = None
 		self.active_level_surface = None
