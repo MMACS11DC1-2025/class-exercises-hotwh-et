@@ -11,15 +11,8 @@ from util import *
 
 DEBUG = False
 FPS = 60
-
 LEVEL_PATH = "./pygame/levels/"
-COLOURS = {
-	"black": (0, 0, 0),
-	"white": (255, 255, 255),
-	"red": (255, 0, 0),
-	"blue": (0, 255, 0),
-	"green": (0, 0, 255)
-}
+MUSIC_PATH = "./pygame/levels/music/"
 GRID_PIXEL_SIZE = 80
 
 class GameState(enum.Enum):
@@ -36,7 +29,7 @@ class Game:
 		# All speeds are applied per second
 		# Pygame has rotation speed CCW positive
 		JUMP_SPEED = 0.34
-		GRAVITY_SPEED = -(JUMP_SPEED * 4.2)
+		GRAVITY_SPEED = -(JUMP_SPEED * 4.6)
 		ROTATION_SPEED = -400
 		SHIP_ACCEL_SPEED = 0.03
 		SHIP_GRAVITY_SPEED = -0.8
@@ -163,10 +156,10 @@ class Game:
 			
 			pos = int(pos)
 			
-			scan_rect = pygame.Rect(pos * GRID_PIXEL_SIZE, 0, GRID_PIXEL_SIZE, game.active_level_surface.get_height())
+			scan_rect = pygame.Rect(pos * GRID_PIXEL_SIZE, self.game.active_level_surface.get_height() - ((self.screen_pos[1] + 1) * GRID_PIXEL_SIZE), GRID_PIXEL_SIZE + 1, game.active_level_surface.get_height())
 			# Only check near objects
 			start_column = pos - 2
-			columns = 5
+			columns = 10
 			highest_ground_pos = game.active_level_surface.get_height()
 			for row in self.level_objects:
 				for object in row[start_column:start_column + columns]:
@@ -207,7 +200,8 @@ class Game:
 			if not self.kills and self.ground:
 				return player_rect.colliderect(self.absolute_hitbox_rect) and (
 					player_rect.right > self.absolute_hitbox_rect.left 
-					and player_rect.left < self.absolute_hitbox_rect.right)
+					and player_rect.left < self.absolute_hitbox_rect.right
+					and player_rect.bottom < self.absolute_hitbox_rect.top)
 			return self.kills and player_rect.colliderect(self.absolute_hitbox_rect)
 
 		def grounds_player(self, player_rect: pygame.Rect):
@@ -242,6 +236,15 @@ class Game:
 
 		pygame.draw.rect(appearance, (0, 0, 0), (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
 		pygame.draw.rect(appearance, (255, 255, 255), (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE), 1)
+
+	class HalfBlock(Object):
+		code = "b1"
+		ground = True
+		hitbox_rect = pygame.Rect(0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE/2)
+		appearance = pygame.Surface((GRID_PIXEL_SIZE, GRID_PIXEL_SIZE/2))
+
+		pygame.draw.rect(appearance, (0, 0, 0), (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE/2))
+		pygame.draw.rect(appearance, (255, 255, 255), (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE/2), 1)
 	
 	class ShipPortal(Object):
 		code = "P1"
@@ -256,13 +259,14 @@ class Game:
 		Spike,
 		ShortSpike,
 		Block,
+		HalfBlock,
 		ShipPortal
 	]
 
 	class Level:
 		def __init__(self, name, music, difficulty, colour, level):
 			self.name: str = name
-			self.music: str = music
+			self.music: str | None = music
 			self.difficulty: int = difficulty
 			self.colour: tuple[int, int, int] = tuple(colour)
 			self.level: list[list[Game.Level.Object]] = level
@@ -279,10 +283,13 @@ class Game:
 				assert "colour" in level_data
 				assert "level" in level_data
 			except (ValueError, AssertionError):
-				print("Error parsing level data given the follsowing data:")
+				print("Error parsing level data given the following data:")
 				print(f"\t{levelData}")
 				return None
 			
+			music_file_path = os.path.join(MUSIC_PATH, level_data["music"])
+			music = music_file_path if os.path.exists(music_file_path) and os.path.isfile(music_file_path) else None
+
 			level_strings = level_data["level"]
 			level_objects = []
 			for y in range(len(level_strings)):
@@ -299,7 +306,7 @@ class Game:
 			
 			return Game.Level(
 					level_data["name"],
-					level_data["music"],
+					music,
 					level_data["difficulty"],
 					level_data["colour"],
 					level_objects,
@@ -329,6 +336,7 @@ class Game:
 		self.last_render_time = None
 		self.level_x = 0
 		self.open_level_jumped = False
+		self.music_loaded = False
 	
 	def get_levels(self) -> list[Level]:
 		if not os.path.exists(LEVEL_PATH):
@@ -464,6 +472,13 @@ class Game:
 		self.active_level_surface = self.render_level(self.active_level)
 		self.last_render_time = time.time()
 		self.level_x = 0
+		if self.active_level.music is not None:
+			try:
+				pygame.mixer.music.load(self.active_level.music)
+			except pygame.error:
+				return
+			pygame.mixer.music.play()
+			self.music_loaded = True
 
 	def close_level(self):
 		self.state = GameState.LEVEL_MENU
@@ -471,11 +486,16 @@ class Game:
 		self.active_level = None
 		self.active_level_surface = None
 		self.last_render_time = None
+		pygame.mixer.music.stop()
+		pygame.mixer.music.unload()
+		self.music_loaded = False
 	
 	def reset_level(self):
 		self.player = Game.Player(self, self.active_level.level)
 		self.level_x = 0
 		self.last_render_time = time.time()
+		if self.music_loaded:
+			pygame.mixer.music.play()
 	
 	def render_level(self, level: Level):
 		objects = level.level
