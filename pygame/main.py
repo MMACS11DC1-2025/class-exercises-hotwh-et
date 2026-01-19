@@ -30,7 +30,7 @@ class Game:
 		# Pygame has rotation speed CCW positive
 		JUMP_SPEED = 0.34
 		GRAVITY_SPEED = -(JUMP_SPEED * 4.6)
-		ROTATION_SPEED = -400
+		ROTATION_SPEED = -450
 		SHIP_ACCEL_SPEED = 0.03
 		SHIP_GRAVITY_SPEED = -0.8
 		# SHIP_ROTATION_SPEED = 200
@@ -38,11 +38,11 @@ class Game:
 		SHIP_ROTATION_LIMIT_SPEED = (-0.4, 0.4)
 
 		CUBE_APPEARANCE = pygame.Surface((GRID_PIXEL_SIZE, GRID_PIXEL_SIZE), SRCALPHA)
-		pygame.draw.rect(CUBE_APPEARANCE, (0, 128, 0), (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
+		pygame.draw.rect(CUBE_APPEARANCE, (200, 200, 0), (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
 		pygame.draw.rect(CUBE_APPEARANCE, (255, 255, 255), (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE), 1)
 
 		SHIP_APPEARANCE = pygame.Surface((GRID_PIXEL_SIZE * 1.5, GRID_PIXEL_SIZE * 1.5), SRCALPHA)
-		pygame.draw.rect(SHIP_APPEARANCE, (0, 128, 0), (GRID_PIXEL_SIZE * 0.25, GRID_PIXEL_SIZE * 0.25, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
+		pygame.draw.rect(SHIP_APPEARANCE, (200, 200, 0), (GRID_PIXEL_SIZE * 0.25, GRID_PIXEL_SIZE * 0.25, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
 		pygame.draw.rect(SHIP_APPEARANCE, (255, 255, 255), (GRID_PIXEL_SIZE * 0.25, GRID_PIXEL_SIZE * 0.25, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE), 1)
 		pygame.draw.ellipse(SHIP_APPEARANCE, (128, 0, 128), (0, GRID_PIXEL_SIZE * 0.9, GRID_PIXEL_SIZE * 1.5, GRID_PIXEL_SIZE * 0.6))
 
@@ -59,6 +59,8 @@ class Game:
 			self.vector_time = 0
 			self.rotation = 0
 			self.last_frame_time = time.time()
+			self.touching_orb = False
+			self.touching_orb_speed = None
 
 			self.game = game
 			self.level_objects = level_objects
@@ -87,6 +89,7 @@ class Game:
 					self.rotation = scale(self.speed, self.SHIP_ROTATION_LIMIT_SPEED[0], self.SHIP_ROTATION_LIMIT_SPEED[1], self.SHIP_ROTATION_LIMIT[0], self.SHIP_ROTATION_LIMIT[1])
 
 			
+			touched_orb = False
 			hitbox_rect = pygame.Rect(self.level_pos * GRID_PIXEL_SIZE, self.game.active_level_surface.get_height() - ((self.screen_pos[1] + 1) * GRID_PIXEL_SIZE), GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
 			if DEBUG:
 				pygame.draw.rect(self.game.active_level_surface, (0, 0, 255), hitbox_rect, 1)
@@ -104,6 +107,19 @@ class Game:
 					if object.colliding(hitbox_rect):
 						if object.portal:
 							self.switch_game_mode(object.game_mode)
+						elif object.pad:
+							self.pad(object.pad_speed)
+						
+						if object.orb:
+							touched_orb = True
+							self.touching_orb_speed = object.orb_speed
+					if object.trigger:
+						triggered, value = object.trigger_activate(hitbox_rect)
+
+						if triggered:
+							self.game.change_bg_colour(value)
+			
+			self.touching_orb = touched_orb
 			return True
 
 		def calculate_vector(self, speed, time_diff):
@@ -120,15 +136,23 @@ class Game:
 
 		def jump(self):
 			speed = None
-			match self.game_mode:
-				case GameMode.CUBE:
-					if self.on_ground():
-						speed = self.JUMP_SPEED
-				case GameMode.SHIP:
-					speed = self.speed + self.SHIP_ACCEL_SPEED
+			if self.touching_orb:
+				speed = self.touching_orb_speed
+				self.touching_orb = False
+			else:
+				match self.game_mode:
+					case GameMode.CUBE:
+						if self.on_ground():
+							speed = self.JUMP_SPEED
+					case GameMode.SHIP:
+						speed = self.speed + self.SHIP_ACCEL_SPEED
 			
 			if speed is not None:
 				self.apply_speed(speed)
+		
+		def pad(self, pad_speed):
+			if pad_speed is not None:
+				self.apply_speed(pad_speed)
 
 		def apply_speed(self, speed):
 			self.speed = speed
@@ -186,12 +210,22 @@ class Game:
 		ground: bool = False
 		portal: bool = False
 		game_mode: GameMode | None = None
+		pad: bool = False
+		pad_speed: float | None = None
+		orb: bool = False
+		orb_speed: float | None = None
+		trigger: bool = False
+		trigger_activated: bool = False
+		trigger_value: str = None
 		appearance: pygame.Surface
 		hitbox_rect: pygame.Rect
 
 		def __init__(self, pos: tuple[int, int]):
 			absolute_pos = (pos[0] + self.hitbox_rect.left, pos[1] + self.hitbox_rect.top)
 			self.absolute_hitbox_rect = pygame.Rect(absolute_pos, self.hitbox_rect.size)
+		
+		def reset(self):
+			self.trigger_activated = False
 		
 		def colliding(self, hitbox_rect: pygame.Rect):
 			return self.absolute_hitbox_rect.colliderect(hitbox_rect)
@@ -209,6 +243,14 @@ class Game:
 				return False, 0
 			moved_player_rect = player_rect.move(0, 1)
 			return moved_player_rect.colliderect(self.absolute_hitbox_rect), player_rect.bottom - self.absolute_hitbox_rect.top
+		
+		def trigger_activate(self, player_rect: pygame.Rect):
+			if not self.trigger or self.trigger_activated:
+				return (False, "")
+			activated = player_rect.centerx > self.absolute_hitbox_rect.centerx
+			if activated:
+				self.trigger_activated = True
+				return (True, self.trigger_value)
 	
 	class Spike(Object):
 		code = "S1"
@@ -254,13 +296,40 @@ class Game:
 		appearance = pygame.Surface((GRID_PIXEL_SIZE, GRID_PIXEL_SIZE * 3), SRCALPHA)
 
 		pygame.draw.ellipse(appearance, (128, 0, 128), (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE * 3))
+	
+	class YellowPad(Object):
+		code = "p1"
+		pad = True
+		pad_speed = 0.5
+		hitbox_rect = pygame.Rect(0, GRID_PIXEL_SIZE * 0.9, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE * 0.1)
+		appearance = pygame.Surface((GRID_PIXEL_SIZE, GRID_PIXEL_SIZE), SRCALPHA)
+
+		pygame.draw.ellipse(appearance, (255, 255, 0), (0, GRID_PIXEL_SIZE * 0.9, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE * 0.2))
+
+	class YellowOrb(Object):
+		code = "o1"
+		orb = True
+		orb_speed = 0.3
+		hitbox_rect = pygame.Rect(0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
+		appearance = pygame.Surface((GRID_PIXEL_SIZE, GRID_PIXEL_SIZE), SRCALPHA)
+
+		pygame.draw.circle(appearance, (255, 255, 0), (GRID_PIXEL_SIZE * 0.5, GRID_PIXEL_SIZE * 0.5), GRID_PIXEL_SIZE * 0.5)
+	
+	class BackgroundTrigger(Object):
+		code = "bg"
+		trigger = True
+		hitbox_rect = pygame.Rect(0, 0, 0, 0)
+		appearance = pygame.Surface((0, 0))
 
 	objects: list[Object] = [
 		Spike,
 		ShortSpike,
 		Block,
 		HalfBlock,
-		ShipPortal
+		ShipPortal,
+		YellowPad,
+		YellowOrb,
+		BackgroundTrigger
 	]
 
 	class Level:
@@ -296,12 +365,17 @@ class Game:
 				row = level_strings[y]
 				level_objects.append([None for column in range(len(row))])
 				for x in range(len(row)):
-					string = row[x]
+					string: str = row[x]
 					for object_option in Game.objects:
-						if object_option.code == string:
-							# level_objects[y][x] = object_option((x * GRID_PIXEL_SIZE, (len(level_strings) - y - 1) * GRID_PIXEL_SIZE))
-							level_objects[y][x] = object_option((x * GRID_PIXEL_SIZE, y * GRID_PIXEL_SIZE))
-							break
+						if object_option.trigger:
+							if string.startswith(object_option.code):
+								level_objects[y][x] = object_option((x * GRID_PIXEL_SIZE, y * GRID_PIXEL_SIZE))
+								level_objects[y][x].trigger_value = string[2:]
+								break
+						else:
+							if object_option.code == string:
+								level_objects[y][x] = object_option((x * GRID_PIXEL_SIZE, y * GRID_PIXEL_SIZE))
+								break
 						level_objects[y][x] = None
 			
 			return Game.Level(
@@ -333,6 +407,7 @@ class Game:
 		self.player = None
 		self.active_level = None
 		self.active_level_surface: pygame.Surface = None
+		self.bg_colour: pygame.Color = pygame.Color(0, 0, 128)
 		self.last_render_time = None
 		self.level_x = 0
 		self.open_level_jumped = False
@@ -442,6 +517,7 @@ class Game:
 				self.last_render_time = current_time
 
 				screen = pygame.Surface(self.size)
+				screen.fill(self.bg_colour)
 				screen.blit(self.active_level_surface, target_rect)
 
 				if self.jump_input():
@@ -470,8 +546,13 @@ class Game:
 		self.active_level = self.levels[index]
 		self.player = Game.Player(self, self.active_level.level)
 		self.active_level_surface = self.render_level(self.active_level)
+		self.bg_colour = pygame.Color(0, 0, 128)
 		self.last_render_time = time.time()
 		self.level_x = 0
+		for row in self.active_level.level:
+			for object in row:
+				if object is not None:
+					object.reset()
 		if self.active_level.music is not None:
 			try:
 				pygame.mixer.music.load(self.active_level.music)
@@ -485,6 +566,7 @@ class Game:
 		self.player = None
 		self.active_level = None
 		self.active_level_surface = None
+		self.bg_colour = None
 		self.last_render_time = None
 		pygame.mixer.music.stop()
 		pygame.mixer.music.unload()
@@ -494,6 +576,10 @@ class Game:
 		self.player = Game.Player(self, self.active_level.level)
 		self.level_x = 0
 		self.last_render_time = time.time()
+		for row in self.active_level.level:
+			for object in row:
+				if object is not None:
+					object.reset()
 		if self.music_loaded:
 			pygame.mixer.music.play()
 	
@@ -502,8 +588,7 @@ class Game:
 		max_width = len(objects[0])
 		for row in objects[1:]:
 			max_width = max_width if len(row) < max_width else len(row)
-		level_surface = pygame.Surface((max_width * GRID_PIXEL_SIZE, len(objects) * GRID_PIXEL_SIZE))
-		level_surface.fill((0, 0, 128))
+		level_surface = pygame.Surface((max_width * GRID_PIXEL_SIZE, len(objects) * GRID_PIXEL_SIZE), SRCALPHA)
 
 		for y in range(len(objects)):
 			row = objects[y]
@@ -525,6 +610,14 @@ class Game:
 		return not self.open_level_jumped and (pygame.key.get_pressed()[K_w] or
 		pygame.key.get_pressed()[K_SPACE] or
 		pygame.key.get_pressed()[K_UP])
+
+	def change_bg_colour(self, colour: str):
+		new_colour = self.bg_colour
+		try:
+			new_colour = pygame.Color(colour)
+		except ValueError:
+			return
+		self.bg_colour = new_colour
 	
 if __name__ == "__main__" :
 	fpsClock = pygame.time.Clock()
