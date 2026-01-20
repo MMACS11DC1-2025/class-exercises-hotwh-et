@@ -11,6 +11,7 @@ from util import *
 
 DEBUG = False
 FPS = 60
+MENU_MUSIC_FILE = "./pygame/assets/menu.mp3"
 LEVEL_PATH = "./pygame/levels/"
 MUSIC_PATH = "./pygame/levels/music/"
 PROGRESS_FILE = "./pygame/progress.json"
@@ -402,6 +403,9 @@ class Game:
 		self.display_surf = pygame.display.set_mode(self.size)
 		self.level_font_object = pygame.font.Font(pygame.font.get_default_font(), 100)
 		self.percentage_font_object = pygame.font.Font(pygame.font.get_default_font(), 30)
+		self.menu_music_playing = True
+		pygame.mixer.music.load(MENU_MUSIC_FILE)
+		pygame.mixer.music.play()
 
 		self.shown_level_index = 0
 
@@ -528,7 +532,7 @@ class Game:
 
 				progress_bar = pygame.Rect((self.width - progress_total_width) / 2, 0, progress_width, 50)
 				progress_bar.centery = 600
-				pygame.draw.rect(self.display_surf, (0, 255, 0), progress_bar, border_radius=20)
+				pygame.draw.rect(self.display_surf, (0, 150, 0), progress_bar, border_radius=20)
 
 				progress_bar_outline = progress_bar_bg.copy()
 				progress_bar_outline.width += 3
@@ -598,7 +602,7 @@ class Game:
 
 			case GameState.WON_LEVEL:
 				if self.shown_won_screen:
-					if (buttons_pressed["escape"]
+					if (buttons_pressed["escape"] or buttons_pressed["jump"]
 						or (buttons_pressed["mouse"] and pos_in_circle((self.width * 0.5, self.height * 0.7), 100, pygame.mouse.get_pos()))):
 						self.close_level()
 					return
@@ -612,6 +616,8 @@ class Game:
 				self.display_surf.blit(textSurfaceObj, textRectObj)
 
 				pygame.draw.circle(self.display_surf, (0, 128, 0), (self.width * 0.5, self.height * 0.7), 100)
+
+				draw_arrow(self.display_surf, (self.width * 0.5 - 60, self.height * 0.7), (self.width * 0.5 + 70, self.height * 0.7), (255, 255, 255), 30, 80, 50)
 
 				self.shown_won_screen = True
 
@@ -630,6 +636,8 @@ class Game:
 		self.last_render_time = time.time()
 		self.level_x = 0
 		self.percentage = 0
+		pygame.mixer.music.unload()
+		self.menu_music_playing = False
 		for row in self.active_level.level:
 			for object in row:
 				if object is not None:
@@ -645,8 +653,8 @@ class Game:
 	def close_level(self):
 		if self.percentage > self.active_level.progress:
 			percentage = clamp(self.percentage, 0, 100)
-			self.save_level_progress(self.active_level.name, self.percentage)
-			self.active_level.progress = self.percentage
+			self.save_level_progress(self.active_level.name, percentage)
+			self.active_level.progress = percentage
 
 		self.state = GameState.LEVEL_MENU
 		self.player = None
@@ -657,9 +665,17 @@ class Game:
 		pygame.mixer.music.stop()
 		pygame.mixer.music.unload()
 		self.music_loaded = False
+		pygame.mixer.music.load(MENU_MUSIC_FILE)
+		pygame.mixer.music.play()
+		self.menu_music_playing = True
 		self.percentage = 0
 	
 	def reset_level(self):
+		if self.percentage > self.active_level.progress:
+			percentage = clamp(self.percentage, 0, 100)
+			self.save_level_progress(self.active_level.name, percentage)
+			self.active_level.progress = percentage
+
 		self.player = Game.Player(self, self.active_level.level)
 		self.level_x = 0
 		self.last_render_time = time.time()
@@ -713,7 +729,7 @@ class Game:
 	def win_level(self):
 		self.state = GameState.WON_LEVEL
 		self.shown_won_screen = False
-	
+
 	def save_level_progress(self, level_name: str, percentage: int):
 		try:
 			progresses = json.load(open(PROGRESS_FILE, "r"))
