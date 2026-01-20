@@ -13,12 +13,14 @@ DEBUG = False
 FPS = 60
 LEVEL_PATH = "./pygame/levels/"
 MUSIC_PATH = "./pygame/levels/music/"
+PROGRESS_FILE = "./pygame/progress.json"
 GRID_PIXEL_SIZE = 80
 
 class GameState(enum.Enum):
 	MAIN_MENU = enum.auto(),
 	LEVEL_MENU = enum.auto(),
 	PLAYING_LEVEL = enum.auto(),
+	WON_LEVEL = enum.auto(),
 
 class GameMode(enum.Enum):
 	CUBE = enum.auto(),
@@ -333,12 +335,13 @@ class Game:
 	]
 
 	class Level:
-		def __init__(self, name, music, difficulty, colour, level):
+		def __init__(self, name, music, difficulty, colour, level, progress):
 			self.name: str = name
 			self.music: str | None = music
 			self.difficulty: int = difficulty
 			self.colour: tuple[int, int, int] = tuple(colour)
 			self.level: list[list[Game.Level.Object]] = level
+			self.progress: int = progress
 
 		@staticmethod
 		def parse_level(levelData: str) -> Self | None:
@@ -352,9 +355,7 @@ class Game:
 				assert "colour" in level_data
 				assert "level" in level_data
 			except (ValueError, AssertionError):
-				print("Error parsing level data given the following data:")
-				print(f"\t{levelData}")
-				return None
+				raise ValueError
 			
 			music_file_path = os.path.join(MUSIC_PATH, level_data["music"])
 			music = music_file_path if os.path.exists(music_file_path) and os.path.isfile(music_file_path) else None
@@ -384,6 +385,7 @@ class Game:
 					level_data["difficulty"],
 					level_data["colour"],
 					level_objects,
+					0
 			)
 		
 		def __str__(self):
@@ -394,11 +396,12 @@ class Game:
 		self.running = True
 		# self.state = GameState.MAIN_MENU
 		self.state = GameState.LEVEL_MENU
-		self.size = self.width, self.height  = 1280, 800
+		self.size = self.width, self.height = 1280, 800
 
 		pygame.init()
 		self.display_surf = pygame.display.set_mode(self.size)
-		self.fontObj = pygame.font.Font(pygame.font.get_default_font(), 100)
+		self.level_font_object = pygame.font.Font(pygame.font.get_default_font(), 100)
+		self.percentage_font_object = pygame.font.Font(pygame.font.get_default_font(), 30)
 
 		self.shown_level_index = 0
 
@@ -412,11 +415,26 @@ class Game:
 		self.level_x = 0
 		self.open_level_jumped = False
 		self.music_loaded = False
+		self.percentage = 0
+	
+		self.shown_won_screen = False
 	
 	def get_levels(self) -> list[Level]:
-		if not os.path.exists(LEVEL_PATH):
+		if not os.path.isdir(LEVEL_PATH):
 			print(f"Level path not found! Currently: \"{LEVEL_PATH}\". Change the path or make the folder")
+		if not os.path.isfile(PROGRESS_FILE):
+			file = open(PROGRESS_FILE, "x")
+			file.write("{}")
 			
+		progresses: dict[str: int] = {}
+		with open(PROGRESS_FILE, "r") as file:
+			try:
+				progresses = json.load(file)
+			except ValueError:
+				print(f"Invalid progress file found! Fix or delete the file at {PROGRESS_FILE}")
+				sys.exit()
+				return []
+
 		level_files = os.listdir(LEVEL_PATH)
 
 		levels = []
@@ -424,7 +442,13 @@ class Game:
 			if not level_file.endswith(".level"):
 				continue
 			with open(os.path.join(LEVEL_PATH, level_file)) as file:
-				level = Game.Level.parse_level(file.read())
+				try:
+					level: Game.Level = Game.Level.parse_level(file.read())
+					progress = progresses.get(level.name)
+					if progress is not None:
+						level.progress = progress
+				except ValueError:
+					print(f"Error parsing level data for {file.name}")
 				if level is None:
 					continue
 				levels.append(level)
@@ -463,10 +487,9 @@ class Game:
 					or event.key == K_UP):
 					self.open_level_jumped = False
 
-
-		self.display_surf.fill((0, 0, 0))
 		match self.state:
 			case GameState.MAIN_MENU:
+				self.display_surf.fill((0, 0, 0))
 				pygame.draw.circle(self.display_surf, (255, 255, 0), (640, 400), 100)
 				if (buttons_pressed["mouse"]
 						and pos_in_circle((640, 400), 100, pygame.mouse.get_pos())):
@@ -481,7 +504,7 @@ class Game:
 				
 				level = self.levels[self.shown_level_index] if self.shown_level_index < len(self.levels) else None
 				self.display_surf.fill(level.colour)
-				textSurfaceObj = self.fontObj.render(f"{level.name if level is not None else f"None {self.shown_level_index}"}", True, (255, 255, 255))
+				textSurfaceObj = self.level_font_object.render(f"{level.name if level is not None else f"None {self.shown_level_index}"}", True, (255, 255, 255))
 				textRectObj = textSurfaceObj.get_rect()
 				textRectObj.center = (640, 300)
 
@@ -490,6 +513,30 @@ class Game:
 				pygame.draw.rect(self.display_surf, (0, 0, 0), textBgRect, border_radius=20)
 
 				self.display_surf.blit(textSurfaceObj, textRectObj)
+
+				percentage = self.levels[self.shown_level_index].progress
+				textPercentageSurfaceObj = self.percentage_font_object.render(f"{percentage}%", True, (255, 255, 255))
+				textPercentageRectObj = textPercentageSurfaceObj.get_rect()
+				textPercentageRectObj.center = (640, 600)
+
+				progress_total_width = 1000
+				progress_width = progress_total_width * (percentage / 100)
+
+				progress_bar_bg = pygame.Rect(0, 0, progress_total_width, 50)
+				progress_bar_bg.center = (640, 600)
+				pygame.draw.rect(self.display_surf, (20, 20, 20), progress_bar_bg, border_radius=20)
+
+				progress_bar = pygame.Rect((self.width - progress_total_width) / 2, 0, progress_width, 50)
+				progress_bar.centery = 600
+				pygame.draw.rect(self.display_surf, (0, 255, 0), progress_bar, border_radius=20)
+
+				progress_bar_outline = progress_bar_bg.copy()
+				progress_bar_outline.width += 3
+				progress_bar_outline.height += 3
+				progress_bar_outline.center = progress_bar_bg.center
+				pygame.draw.rect(self.display_surf, (255, 255, 255), progress_bar_outline, 3, border_radius=20)
+
+				self.display_surf.blit(textPercentageSurfaceObj, textPercentageRectObj)
 
 				pygame.draw.circle(self.display_surf, (255, 255, 0), (40, 40), 20)
 				pygame.draw.circle(self.display_surf, (0, 255, 0), (40, 40), 15)
@@ -532,8 +579,41 @@ class Game:
 
 				self.display_surf.blit(screen, (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE))
 
+				percentage = self.get_level_percentage()
+
+				textSurfaceObj = self.percentage_font_object.render(f"{percentage * 100:.0f}%", True, (255, 255, 255))
+				textRectObj = textSurfaceObj.get_rect()
+				textRectObj.centerx = 640
+				textRectObj.top = self.height * 0.02
+
+				self.display_surf.blit(textSurfaceObj, textRectObj)
+
+				self.percentage = int(percentage * 100)
+				if percentage >= 1:
+					self.win_level()
+					return
+
 				if buttons_pressed["escape"]:
 					self.close_level()
+
+			case GameState.WON_LEVEL:
+				if self.shown_won_screen:
+					if (buttons_pressed["escape"]
+						or (buttons_pressed["mouse"] and pos_in_circle((self.width * 0.5, self.height * 0.7), 100, pygame.mouse.get_pos()))):
+						self.close_level()
+					return
+				
+				pygame.draw.rect(self.display_surf, (10, 10, 10), (self.width * 0.1, self.height * 0.1, self.width * 0.8, self.height * 0.6), border_radius=20)
+
+				textSurfaceObj = self.level_font_object.render("Completed Level!", True, (255, 255, 255))
+				textRectObj = textSurfaceObj.get_rect()
+				textRectObj.center = (640, 300)
+
+				self.display_surf.blit(textSurfaceObj, textRectObj)
+
+				pygame.draw.circle(self.display_surf, (0, 128, 0), (self.width * 0.5, self.height * 0.7), 100)
+
+				self.shown_won_screen = True
 
 		pygame.display.update()
 	
@@ -549,6 +629,7 @@ class Game:
 		self.bg_colour = pygame.Color(0, 0, 128)
 		self.last_render_time = time.time()
 		self.level_x = 0
+		self.percentage = 0
 		for row in self.active_level.level:
 			for object in row:
 				if object is not None:
@@ -562,6 +643,11 @@ class Game:
 			self.music_loaded = True
 
 	def close_level(self):
+		if self.percentage > self.active_level.progress:
+			percentage = clamp(self.percentage, 0, 100)
+			self.save_level_progress(self.active_level.name, self.percentage)
+			self.active_level.progress = self.percentage
+
 		self.state = GameState.LEVEL_MENU
 		self.player = None
 		self.active_level = None
@@ -571,6 +657,7 @@ class Game:
 		pygame.mixer.music.stop()
 		pygame.mixer.music.unload()
 		self.music_loaded = False
+		self.percentage = 0
 	
 	def reset_level(self):
 		self.player = Game.Player(self, self.active_level.level)
@@ -609,7 +696,8 @@ class Game:
 	def jump_input(self):
 		return not self.open_level_jumped and (pygame.key.get_pressed()[K_w] or
 		pygame.key.get_pressed()[K_SPACE] or
-		pygame.key.get_pressed()[K_UP])
+		pygame.key.get_pressed()[K_UP] or
+		pygame.mouse.get_pressed()[0])
 
 	def change_bg_colour(self, colour: str):
 		new_colour = self.bg_colour
@@ -619,6 +707,25 @@ class Game:
 			return
 		self.bg_colour = new_colour
 	
+	def get_level_percentage(self):
+		return (self.player.level_pos - self.player.screen_pos[0]) / (self.active_level_surface.get_width() / GRID_PIXEL_SIZE)
+	
+	def win_level(self):
+		self.state = GameState.WON_LEVEL
+		self.shown_won_screen = False
+	
+	def save_level_progress(self, level_name: str, percentage: int):
+		try:
+			progresses = json.load(open(PROGRESS_FILE, "r"))
+		except:
+			print(f"Failed to load the progress file! Fix or delete the file at {PROGRESS_FILE}")
+			return
+		progresses[level_name] = percentage
+		try:
+			json.dump(progresses, open(PROGRESS_FILE, "w"))
+		except:
+			print(f"Failed to save progress to {PROGRESS_FILE}! Progress not saved!")
+
 if __name__ == "__main__" :
 	fpsClock = pygame.time.Clock()
 	game = Game()
