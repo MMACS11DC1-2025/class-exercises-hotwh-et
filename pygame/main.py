@@ -27,6 +27,11 @@ class GameMode(enum.Enum):
 	CUBE = enum.auto(),
 	SHIP = enum.auto(),
 
+class DeathCause(enum.Enum):
+	GENERIC = enum.auto(),
+	WALL = enum.auto(),
+	CEILING = enum.auto(),
+
 class Game:
 	class Player:
 		# All speeds are applied per second
@@ -101,7 +106,11 @@ class Game:
 					if object is None:
 						continue
 					grounded, ground_offset = object.grounds_player(hitbox_rect)
-					if object.kills_player(hitbox_rect):
+					kills, death_cause = object.kills_player(hitbox_rect)
+					if kills:
+						print(death_cause)
+						if self.game_mode == GameMode.SHIP and death_cause == DeathCause.CEILING:
+							continue
 						self.game.reset_level()
 						return False
 					elif grounded:
@@ -203,6 +212,7 @@ class Game:
 			
 			match game_mode:
 				case GameMode.SHIP:
+					self.speed /= 2
 					self.rotation = 0
 
 			self.game_mode = game_mode
@@ -233,13 +243,19 @@ class Game:
 		def colliding(self, hitbox_rect: pygame.Rect):
 			return self.absolute_hitbox_rect.colliderect(hitbox_rect)
 		
-		def kills_player(self, player_rect: pygame.Rect):
+		def kills_player(self, player_rect: pygame.Rect) -> tuple[bool, DeathCause]:
 			if not self.kills and self.ground:
-				return player_rect.colliderect(self.absolute_hitbox_rect) and (
-					player_rect.right > self.absolute_hitbox_rect.left 
-					and player_rect.left < self.absolute_hitbox_rect.right
-					and player_rect.bottom < self.absolute_hitbox_rect.top)
-			return self.kills and player_rect.colliderect(self.absolute_hitbox_rect)
+				if player_rect.colliderect(self.absolute_hitbox_rect):
+					if (player_rect.top < self.absolute_hitbox_rect.bottom
+						and player_rect.bottom > self.absolute_hitbox_rect.bottom):
+						return (True, DeathCause.CEILING)
+					if (player_rect.right > self.absolute_hitbox_rect.left 
+						and player_rect.left < self.absolute_hitbox_rect.right
+						and player_rect.bottom > self.absolute_hitbox_rect.top):
+						return (True, DeathCause.WALL)
+			if self.kills and player_rect.colliderect(self.absolute_hitbox_rect):
+				return (True, DeathCause.GENERIC)
+			return (False, None)
 
 		def grounds_player(self, player_rect: pygame.Rect):
 			if not self.ground:
