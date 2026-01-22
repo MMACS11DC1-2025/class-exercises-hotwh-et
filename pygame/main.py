@@ -9,7 +9,7 @@ import pygame
 from pygame.locals import *
 from util import *
 
-DEBUG = False
+DEBUG = True
 FPS = 60
 MENU_MUSIC_FILE = "./pygame/assets/menu.mp3"
 LEVEL_PATH = "./pygame/levels/"
@@ -95,25 +95,29 @@ class Game:
 						self.rotation += self.ROTATION_SPEED * frame_time
 				case GameMode.SHIP:
 					self.rotation = scale(self.speed, self.SHIP_ROTATION_LIMIT_SPEED[0], self.SHIP_ROTATION_LIMIT_SPEED[1], self.SHIP_ROTATION_LIMIT[0], self.SHIP_ROTATION_LIMIT[1])
-
 			
 			touched_orb = False
 			hitbox_rect = pygame.Rect(self.level_pos * GRID_PIXEL_SIZE, self.game.active_level_surface.get_height() - ((self.screen_pos[1] + 1) * GRID_PIXEL_SIZE), GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
 			if DEBUG:
 				pygame.draw.rect(self.game.active_level_surface, (0, 0, 255), hitbox_rect, 1)
+			# print(self.ceiling_pos())
 			for row in self.level_objects:
 				for object in row:
 					if object is None:
 						continue
-					grounded, ground_offset = object.grounds_player(hitbox_rect)
 					kills, death_cause = object.kills_player(hitbox_rect)
 					if kills:
 						print(death_cause)
-						if self.game_mode == GameMode.SHIP and death_cause == DeathCause.CEILING:
-							continue
-						self.game.reset_level()
-						return False
-					elif grounded:
+						if not (self.game_mode == GameMode.SHIP and death_cause == DeathCause.CEILING):							
+							self.game.reset_level()
+							return False
+					ceilinged, ceiling_offset = object.ceilings_player(hitbox_rect)
+					if ceilinged and self.game_mode == GameMode.SHIP:
+						self.screen_pos[1] += ceiling_offset / GRID_PIXEL_SIZE
+						self.speed = 0
+						hitbox_rect = pygame.Rect(self.level_pos * GRID_PIXEL_SIZE, self.game.active_level_surface.get_height() - ((self.screen_pos[1] + 1)* GRID_PIXEL_SIZE), GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
+					grounded, ground_offset = object.grounds_player(hitbox_rect)
+					if grounded:
 						self.screen_pos[1] += ground_offset / GRID_PIXEL_SIZE
 						hitbox_rect = pygame.Rect(self.level_pos * GRID_PIXEL_SIZE, self.game.active_level_surface.get_height() - ((self.screen_pos[1] + 1)* GRID_PIXEL_SIZE), GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
 					if object.colliding(hitbox_rect):
@@ -205,6 +209,43 @@ class Game:
 					if not object.kills and scan_rect.colliderect(object.absolute_hitbox_rect):
 						highest_ground_pos = object.absolute_hitbox_rect.top if object.absolute_hitbox_rect.top < highest_ground_pos else highest_ground_pos
 			return (game.active_level_surface.get_height() - highest_ground_pos) / GRID_PIXEL_SIZE
+
+		def on_ceiling(self, pos=None):
+			if pos is None:
+				pos = (self.level_pos, self.screen_pos[1])
+			if pos[1] >= 10:
+				return True
+
+			hitbox_rect = pygame.Rect(pos[0] * GRID_PIXEL_SIZE, self.game.active_level_surface.get_height() - ((pos[1] + 1) * GRID_PIXEL_SIZE), GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
+			for row in self.level_objects:
+				for object in row:
+					if object is None:
+						continue
+					if object.ceilings_player(hitbox_rect)[0]:
+						return True
+
+			return False
+
+		def ceiling_pos(self, pos=None):
+			if pos is None:
+				pos = self.level_pos
+			
+			pos = int(pos)
+			
+			scan_rect = pygame.Rect(pos * GRID_PIXEL_SIZE, 0, GRID_PIXEL_SIZE + 1, game.active_level_surface.get_height() - self.screen_pos[1] * GRID_PIXEL_SIZE)
+			pygame.draw.rect(self.game.active_level_surface, (0, 0, 255), scan_rect, 1)
+			# Only check near objects
+			start_column = pos - 2
+			columns = 10
+			lowest_ceiling_pos = 0
+			for row in self.level_objects:
+				for object in row[start_column:start_column + columns]:
+					if object is None:
+						continue
+					
+					if not object.kills and scan_rect.colliderect(object.absolute_hitbox_rect):
+						lowest_ceiling_pos = object.absolute_hitbox_rect.bottom if object.absolute_hitbox_rect.bottom > lowest_ceiling_pos else lowest_ceiling_pos
+			return (game.active_level_surface.get_height() - lowest_ceiling_pos) / GRID_PIXEL_SIZE
 		
 		def switch_game_mode(self, game_mode: GameMode):
 			if game_mode is None or game_mode == self.game_mode:
@@ -247,7 +288,8 @@ class Game:
 			if not self.kills and self.ground:
 				if player_rect.colliderect(self.absolute_hitbox_rect):
 					if (player_rect.top < self.absolute_hitbox_rect.bottom
-						and player_rect.bottom > self.absolute_hitbox_rect.bottom):
+						and player_rect.bottom > self.absolute_hitbox_rect.bottom
+						and player_rect.top > self.absolute_hitbox_rect.centery):
 						return (True, DeathCause.CEILING)
 					if (player_rect.right > self.absolute_hitbox_rect.left 
 						and player_rect.left < self.absolute_hitbox_rect.right
@@ -261,7 +303,13 @@ class Game:
 			if not self.ground:
 				return False, 0
 			moved_player_rect = player_rect.move(0, 1)
-			return moved_player_rect.colliderect(self.absolute_hitbox_rect), player_rect.bottom - self.absolute_hitbox_rect.top
+			return moved_player_rect.colliderect(self.absolute_hitbox_rect) and moved_player_rect.top < self.absolute_hitbox_rect.top, player_rect.bottom - self.absolute_hitbox_rect.top
+		
+		def ceilings_player(self, player_rect: pygame.Rect):
+			if not self.ground:
+				return False, 0
+			moved_player_rect = player_rect.move(0, -1)
+			return moved_player_rect.colliderect(self.absolute_hitbox_rect) and moved_player_rect.top > self.absolute_hitbox_rect.centery, player_rect.top - self.absolute_hitbox_rect.bottom
 		
 		def trigger_activate(self, player_rect: pygame.Rect):
 			if not self.trigger or self.trigger_activated:
