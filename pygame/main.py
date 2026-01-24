@@ -9,7 +9,7 @@ import pygame
 from pygame.locals import *
 from util import *
 
-DEBUG = True
+DEBUG = False
 FPS = 60
 MENU_MUSIC_FILE = "./pygame/assets/menu.mp3"
 LEVEL_PATH = "./pygame/levels/"
@@ -100,19 +100,20 @@ class Game:
 			hitbox_rect = pygame.Rect(self.level_pos * GRID_PIXEL_SIZE, self.game.active_level_surface.get_height() - ((self.screen_pos[1] + 1) * GRID_PIXEL_SIZE), GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
 			if DEBUG:
 				pygame.draw.rect(self.game.active_level_surface, (0, 0, 255), hitbox_rect, 1)
-			# print(self.ceiling_pos())
 			for row in self.level_objects:
 				for object in row:
 					if object is None:
 						continue
 					kills, death_cause = object.kills_player(hitbox_rect)
 					if kills:
-						print(death_cause)
 						if not (self.game_mode == GameMode.SHIP and death_cause == DeathCause.CEILING):							
 							self.game.reset_level()
 							return False
 					ceilinged, ceiling_offset = object.ceilings_player(hitbox_rect)
-					if ceilinged and self.game_mode == GameMode.SHIP:
+					if self.screen_pos[1] >= 9:
+						self.screen_pos[1] = 9
+						self.speed = 0
+					elif ceilinged and self.game_mode == GameMode.SHIP:
 						self.screen_pos[1] += ceiling_offset / GRID_PIXEL_SIZE
 						self.speed = 0
 						hitbox_rect = pygame.Rect(self.level_pos * GRID_PIXEL_SIZE, self.game.active_level_surface.get_height() - ((self.screen_pos[1] + 1)* GRID_PIXEL_SIZE), GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
@@ -469,7 +470,7 @@ class Game:
 		self.percentage_font_object = pygame.font.Font(pygame.font.get_default_font(), 30)
 		self.menu_music_playing = True
 		pygame.mixer.music.load(MENU_MUSIC_FILE)
-		pygame.mixer.music.play()
+		pygame.mixer.music.play(-1)
 
 		self.shown_level_index = 0
 
@@ -730,7 +731,7 @@ class Game:
 		pygame.mixer.music.unload()
 		self.music_loaded = False
 		pygame.mixer.music.load(MENU_MUSIC_FILE)
-		pygame.mixer.music.play()
+		pygame.mixer.music.play(-1)
 		self.menu_music_playing = True
 		self.percentage = 0
 	
