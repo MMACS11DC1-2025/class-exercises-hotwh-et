@@ -478,16 +478,21 @@ class Game:
 		
 		def __str__(self):
 			return f"{self.name=};{self.music=};{self.difficulty=};{self.colour=};{self.level=}"
-			
+	
+	icon = pygame.Surface((32, 32), SRCALPHA)
+	pygame.draw.polygon(icon, (200, 200, 0), [(10, 0), (0, 10), (10, 20), (20, 10)])
+	pygame.draw.polygon(icon, (0, 0, 0), [(18, 32), (25, 18), (32, 32)])
 
 	def __init__(self):
 		self.running = True
-		# self.state = GameState.MAIN_MENU
-		self.state = GameState.LEVEL_MENU
+		self.state = GameState.MAIN_MENU
 		self.size = self.width, self.height = 1280, 800
 
 		pygame.init()
+		pygame.display.set_caption("Rhythm Rush")
+		pygame.display.set_icon(self.icon)
 		self.display_surf = pygame.display.set_mode(self.size)
+		self.title_font_object = pygame.font.Font(pygame.font.get_default_font(), 150)
 		self.level_font_object = pygame.font.Font(pygame.font.get_default_font(), 100)
 		self.percentage_font_object = pygame.font.Font(pygame.font.get_default_font(), 30)
 		self.menu_music_playing = True
@@ -580,19 +585,26 @@ class Game:
 
 		match self.state:
 			case GameState.MAIN_MENU:
-				self.display_surf.fill((0, 0, 0))
-				pygame.draw.circle(self.display_surf, (255, 255, 0), (640, 400), 100)
+				self.display_surf.fill((0, 0, 128))
+
+				pygame.draw.polygon(self.display_surf, (200, 200, 0), [(300, 200), (475, 375), (300, 550), (125, 375)])
+				pygame.draw.polygon(self.display_surf, (255, 255, 255), [(300, 200), (475, 375), (300, 550), (125, 375)], 3)
+				pygame.draw.polygon(self.display_surf, (0, 0, 0), [(540, 488), (671, 750), (409, 750)])
+				pygame.draw.polygon(self.display_surf, (255, 255, 255), [(540, 488), (671, 750), (409, 750)], 3)
+
+				pygame.draw.circle(self.display_surf, (255, 255, 0), (1000, 400), 150)
+				pygame.draw.circle(self.display_surf, (0, 190, 0), (1000, 400), 130)
+				pygame.draw.polygon(self.display_surf, (255, 255, 0), [(1060, 400), (960, 320), (960, 480)])
 				if (buttons_pressed["mouse"]
-						and pos_in_circle((640, 400), 100, pygame.mouse.get_pos())):
+						and pos_in_circle((1000, 400), 150, pygame.mouse.get_pos())) or buttons_pressed["jump"]:
 					self.open_level_menu()
 
+				text_surface = self.title_font_object.render("Rhythm Rush", True, (255, 255, 255))
+				text_rect = text_surface.get_rect()
+				text_rect.center = (640, 150)
+				self.display_surf.blit(text_surface, text_rect)
+
 			case GameState.LEVEL_MENU:
-				if (buttons_pressed["left"]):
-					self.shown_level_index = self.shown_level_index - 1 if self.shown_level_index > 0 else len(self.levels) - 1
-				elif (buttons_pressed["right"]):
-					self.shown_level_index = self.shown_level_index + 1 if self.shown_level_index + 1 < len(self.levels) else 0
-				
-				
 				level = self.levels[self.shown_level_index] if self.shown_level_index < len(self.levels) else None
 				self.display_surf.fill(level.colour)
 				textSurfaceObj = self.level_font_object.render(f"{level.name if level is not None else f"None {self.shown_level_index}"}", True, (255, 255, 255))
@@ -629,13 +641,27 @@ class Game:
 
 				self.display_surf.blit(textPercentageSurfaceObj, textPercentageRectObj)
 
-				pygame.draw.circle(self.display_surf, (255, 255, 0), (40, 40), 20)
-				pygame.draw.circle(self.display_surf, (0, 255, 0), (40, 40), 15)
+				left_arrow = pygame.draw.polygon(self.display_surf, (255, 255, 255), [(20, 400), (60, 440), (60, 360)])
+				right_arrow = pygame.draw.polygon(self.display_surf, (255, 255, 255), [(1260, 400), (1220, 440), (1220, 360)])
+				if (buttons_pressed["left"]):
+					self.shown_level_index = self.shown_level_index - 1 if self.shown_level_index > 0 else len(self.levels) - 1
+				elif (buttons_pressed["right"]):
+					self.shown_level_index = self.shown_level_index + 1 if self.shown_level_index + 1 < len(self.levels) else 0
+
+				pygame.draw.circle(self.display_surf, (255, 255, 0), (60, 60), 30)
+				pygame.draw.circle(self.display_surf, (0, 190, 0), (60, 60), 25)
+				pygame.draw.polygon(self.display_surf, (255, 255, 255), [(50, 60), (65, 50), (65, 70)])
 				if buttons_pressed["mouse"]:
-					if pos_in_circle((40, 40), 20, pygame.mouse.get_pos()):
+					mouse_pos = pygame.mouse.get_pos()
+					if pos_in_circle((60, 60), 30, mouse_pos):
 						self.state = GameState.MAIN_MENU
-					elif textBgRect.collidepoint(pygame.mouse.get_pos()):
+					elif textBgRect.collidepoint(mouse_pos):
 						self.open_level(self.shown_level_index)
+					elif left_arrow.collidepoint(mouse_pos):
+						self.shown_level_index = self.shown_level_index - 1 if self.shown_level_index > 0 else len(self.levels) - 1
+					elif right_arrow.collidepoint(mouse_pos):
+						self.shown_level_index = self.shown_level_index + 1 if self.shown_level_index + 1 < len(self.levels) else 0
+
 				elif buttons_pressed["jump"]:
 					self.open_level_jumped = True
 					self.open_level(self.shown_level_index)
