@@ -18,7 +18,6 @@ MUSIC_PATH = "./pygame/levels/music/"
 PROGRESS_FILE = "./pygame/progress.json"
 GRID_PIXEL_SIZE = 80
 MAX_SURFACE_WIDTH = 65535 # Limitation of pygame, otherwise causes integer overflow
-# MAX_SURFACE_WIDTH = 8000 # Limitation of pygame, otherwise causes integer overflow
 
 class GameState(enum.Enum):
 	MAIN_MENU = enum.auto(),
@@ -423,10 +422,9 @@ class Game:
 	]
 
 	class Level:
-		def __init__(self, name, music, difficulty, colour, level, progress):
+		def __init__(self, name, music, colour, level, progress):
 			self.name: str = name
 			self.music: str | None = music
-			self.difficulty: int = difficulty
 			self.colour: tuple[int, int, int] = tuple(colour)
 			self.level: list[list[Game.Level.Object]] = level
 			self.progress: int = progress
@@ -439,7 +437,6 @@ class Game:
 				level_data = json.loads(levelData)
 				assert "name" in level_data
 				assert "music" in level_data
-				assert "difficulty" in level_data
 				assert "colour" in level_data
 				assert "level" in level_data
 			except (ValueError, AssertionError):
@@ -470,14 +467,13 @@ class Game:
 			return Game.Level(
 					level_data["name"],
 					music,
-					level_data["difficulty"],
 					level_data["colour"],
 					level_objects,
 					0
 			)
 		
 		def __str__(self):
-			return f"{self.name=};{self.music=};{self.difficulty=};{self.colour=};{self.level=}"
+			return f"{self.name=};{self.music=};{self.colour=};{self.level=}"
 	
 	icon = pygame.Surface((32, 32), SRCALPHA)
 	pygame.draw.polygon(icon, (200, 200, 0), [(10, 0), (0, 10), (10, 20), (20, 10)])
