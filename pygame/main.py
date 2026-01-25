@@ -396,7 +396,7 @@ class Game:
 	class YellowOrb(Object):
 		code = "o1"
 		orb = True
-		orb_speed = 0.3
+		orb_speed = 0.34
 		hitbox_rect = pygame.Rect(0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE)
 		appearance = pygame.Surface((GRID_PIXEL_SIZE, GRID_PIXEL_SIZE), SRCALPHA)
 
