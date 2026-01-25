@@ -112,7 +112,6 @@ class Game:
 					if not NOCLIP:
 						kills, death_cause = object.kills_player(hitbox_rect)
 						if kills:
-							print(death_cause)
 							if not (self.game_mode == GameMode.SHIP and death_cause == DeathCause.CEILING):							
 								self.game.reset_level()
 								return False
@@ -285,11 +284,6 @@ class Game:
 					if (player_rect.right > self.absolute_hitbox_rect.left 
 						and player_rect.left < self.absolute_hitbox_rect.right
 						and player_rect.bottom > self.absolute_hitbox_rect.top):
-						print(f"{player_rect.right > self.absolute_hitbox_rect.left=}")
-						print(f"{player_rect.left < self.absolute_hitbox_rect.right=}")
-						print(f"{player_rect.bottom > self.absolute_hitbox_rect.top=}")
-						print(f"{player_rect=};{self.absolute_hitbox_rect=}")
-						print(self)
 						return (True, DeathCause.WALL)
 			if self.kills and player_rect.colliderect(self.absolute_hitbox_rect):
 				return (True, DeathCause.GENERIC)
