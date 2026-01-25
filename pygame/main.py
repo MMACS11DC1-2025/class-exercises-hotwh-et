@@ -9,7 +9,7 @@ import pygame
 from pygame.locals import *
 from util import *
 
-DEBUG = True
+DEBUG = False
 NOCLIP = False
 FPS = 60
 MENU_MUSIC_FILE = "./pygame/assets/menu.mp3"
@@ -208,7 +208,7 @@ class Game:
 				pygame.draw.rect(game.active_level_surfaces[0], (255, 255, 255), scan_rect, width=1)
 			# Only check near objects
 			start_column = int(pos) - 2
-			columns = 10
+			columns = 5
 			highest_ground_pos = game.active_level_surfaces[0].get_height()
 			for row in self.level_objects:
 				for object in row[start_column:start_column + columns]:
@@ -388,11 +388,12 @@ class Game:
 		appearance = pygame.Surface((GRID_PIXEL_SIZE, GRID_PIXEL_SIZE * 3), SRCALPHA)
 
 		pygame.draw.ellipse(appearance, (128, 0, 128), (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE * 3))
+		pygame.draw.ellipse(appearance, (255, 255, 255), (0, 0, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE * 3), 1)
 	
 	class YellowPad(Object):
 		code = "p1"
 		pad = True
-		pad_speed = 0.5
+		pad_speed = 0.48
 		hitbox_rect = pygame.Rect(0, GRID_PIXEL_SIZE * 0.9, GRID_PIXEL_SIZE, GRID_PIXEL_SIZE * 0.1)
 		appearance = pygame.Surface((GRID_PIXEL_SIZE, GRID_PIXEL_SIZE), SRCALPHA)
 
